@@ -8,6 +8,7 @@ const assert = require("assert");
 const traverse = require("ordered-ast-traverse");
 const Scope = require("./scope");
 const is = require("simple-is");
+const t = require("babel-types");
 
 module.exports = {
     setupScopeAndReferences: setupScopeAndReferences,
@@ -31,7 +32,7 @@ function createScopes(node, parent) {
             parent: parent.$scope,
         });
 
-    } else if (node.type === "VariableDeclaration") {
+    } else if (t.isVariableDeclaration(node)) {
         // Variable declarations names goes in current scope
         node.declarations.forEach(function(declarator) {
             const name = declarator.id.name;
@@ -50,10 +51,10 @@ function createScopes(node, parent) {
 
         // function has a name
         if (node.id) {
-            if (node.type === "FunctionDeclaration") {
+            if (t.isFunctionDeclaration(node)) {
                 // Function name goes in parent scope for declared functions
                 parent.$scope.add(node.id.name, "fun", node.id, null);
-            } else if (node.type === "FunctionExpression") {
+            } else if (t.isFunctionExpression(node)) {
                 // Function name goes in function's scope for named function expressions
                 node.$scope.add(node.id.name, "fun", node.id, null);
             } else {
@@ -74,7 +75,7 @@ function createScopes(node, parent) {
             parent: parent.$scope,
         });
 
-    } else if (node.type === "CatchClause") {
+    } else if (t.isCatchClause(node)) {
         const identifier = node.param;
 
         node.$scope = new Scope({
@@ -95,7 +96,7 @@ function createScopes(node, parent) {
         // in the closest hoist-scope, i.e. where var e$0 belongs.
         node.$scope.closestHoistScope().markPropagates(identifier.name);
 
-    } else if (node.type === "Program") {
+    } else if (t.isProgram(node)) {
         // Top-level program is a scope
         // There's no block-scope under it
         node.$scope = new Scope({
@@ -146,34 +147,35 @@ function isConstLet(kind) {
 }
 
 function isNonFunctionBlock(node, parent) {
-    return node.type === "BlockStatement" && parent.type !== "FunctionDeclaration" && parent.type !== "FunctionExpression";
+    return t.isBlockStatement(node) && !t.isFunctionDeclaration(parent) && !t.isFunctionExpression(parent);
 }
 
 function isForWithConstLet(node) {
-    return node.type === "ForStatement" && node.init && node.init.type === "VariableDeclaration" && isConstLet(node.init.kind);
+    return t.isForStatement(node) && node.init && t.isVariableDeclaration(node.init) && isConstLet(node.init.kind);
 }
 
 function isForInOfWithConstLet(node) {
-    return isForInOf(node) && node.left.type === "VariableDeclaration" && isConstLet(node.left.kind);
+    return isForInOf(node) && t.isVariableDeclaration(node.left) && isConstLet(node.left.kind);
 }
 
 function isForInOf(node) {
-    return node.type === "ForInStatement" || node.type === "ForOfStatement";
+    return t.isForInStatement(node) || t.isForOfStatement(node);
 }
 
 function isFunction(node) {
-    return node.type === "FunctionDeclaration" || node.type === "FunctionExpression";
+    return t.isFunctionDeclaration(node) || t.isFunctionExpression(node);
 }
 
-function isReference(node) {
-    const parent = node.$parent;
+function isReference(path) {
+    const node = path.node;
+    const parent = path.parent;
     return node.$refToScope ||
-        node.type === "Identifier" &&
-            !(parent.type === "VariableDeclarator" && parent.id === node) && // var|let|const $
-            !(parent.type === "MemberExpression" && parent.computed === false && parent.property === node) && // obj.$
-            !(parent.type === "Property" && parent.key === node) && // {$: ...}
-            !(parent.type === "LabeledStatement" && parent.label === node) && // $: ...
-            !(parent.type === "CatchClause" && parent.param === node) && // catch($)
+        t.isIdentifier(node) &&
+            !(t.isVariableDeclarator(parent) && parent.id === node) && // var|let|const $
+            !(t.isMemberExpression(parent) && parent.computed === false && parent.property === node) && // obj.$
+            !(t.isProperty(parent) && parent.key === node) && // {$: ...}
+            !(t.isLabeledStatement(parent) && parent.label === node) && // $: ...
+            !(t.isCatchClause(parent) && parent.param === node) && // catch($)
             !(isFunction(parent) && parent.id === node) && // function $(..
             !(isFunction(parent) && is.someof(node, parent.params)) && // function f($)..
             true;

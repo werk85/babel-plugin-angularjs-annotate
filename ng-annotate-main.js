@@ -88,7 +88,8 @@ function limit(name, pathOrNode) {
     const node = (pathOrNode && pathOrNode.node) || pathOrNode;
 
     if (node && !node.$limitToMethodName) {
-        node.$limitToMethodName = name;
+        pathOrNode.$limitToMethodName = name;
+        // node.$limitToMethodName = name;
     }
     return pathOrNode;
 }
@@ -100,11 +101,13 @@ function matchProviderGet(path) {
     const node = path.node;
     let memberExpr;
     let self;
-    return limit("provider", (t.isAssignmentExpression(node) && t.isMemberExpression(memberExpr = node.left) &&
+    var yes = limit("provider", (t.isAssignmentExpression(node) && t.isMemberExpression(memberExpr = node.left) &&
         memberExpr.property.name === "$get" &&
         (t.isThisExpression(self = memberExpr.object) || (t.isIdentifier(self) && is.someof(self.name, ["self", "that"]))) &&
         path.get("right")) ||
         (t.isObjectExpression(node) && matchProp("$get", path.get("properties"))));
+
+    return yes;
 }
 
 function matchNgRoute(path) {
@@ -221,7 +224,7 @@ function matchNgUi(path) {
         matchStateProps(properties, res);
 
         const childrenArrayExpression = matchProp("children", properties);
-        const children = childrenArrayExpression && childrenArrayExpression.elements;
+        const children = childrenArrayExpression && childrenArrayExpression.get("elements");
 
         if (!children) {
             return;
@@ -318,7 +321,7 @@ function matchControllerProvider(path) {
         method.name === "register" && (args = path.get("arguments")).length === 2 && args[1];
 
     if (target) {
-        target.$methodName = method.name;
+        target.node.$methodName = method.name;
     }
     return target;
 }
@@ -642,7 +645,8 @@ function judgeSuspects(ctx) {
     finalSuspects.forEach(function(nodeOrPath) {
         let target = nodeOrPath.node || nodeOrPath;
         if (target.$chained !== chainedRegular) {
-            // return;
+            console.warn("Skipping", nodeOrPath.node.loc.start.line);
+            return;
         }
 
         if (mode === "rebuild" && isAnnotatedArray(target)) {
@@ -662,60 +666,62 @@ function judgeSuspects(ctx) {
 
 
     function propagateModuleContextAndMethodName(suspects) {
-        suspects.forEach(function(target) {
-            if (target.$chained !== chainedRegular && isInsideModuleContext(target)) {
-                target.$chained = chainedRegular;
+        suspects.forEach(function(path) {
+            if (path.node.$chained !== chainedRegular && isInsideModuleContext(path)) {
+                path.node.$chained = chainedRegular;
             }
 
-            if (!target.$methodName) {
-                const methodName = findOuterMethodName(target);
+            if (!path.node.$methodName) {
+                const methodName = findOuterMethodName(path);
                 if (methodName) {
-                    target.$methodName = methodName;
+                    path.node.$methodName = methodName;
                 }
             }
         });
     }
 
-    function findOuterMethodName(node) {
-        for (; node && !node.$methodName; node = node.$parent) {
+    function findOuterMethodName(path) {
+        for (; path && !path.node.$methodName; path = path.parentPath) {
         }
-        return node ? node.$methodName : null;
+        return path ? path.node.$methodName : null;
     }
 
     function setChainedAndMethodNameThroughIifesAndReferences(suspects) {
         let modified = false;
-        suspects.forEach(function(nodeOrPath) {
-            const target = nodeOrPath.node || nodeOrPath;
-            const jumped = jumpOverIife(target);
-            if (jumped !== target) { // we did skip an IIFE
-                if (target.$chained === chainedRegular && jumped.$chained !== chainedRegular) {
+        suspects.forEach(function(path) {
+            const target = path.node;
+
+            const jumped = jumpOverIife(path);
+            const jumpedNode = jumped.node;
+            if (jumpedNode !== target) { // we did skip an IIFE
+                if (target.$chained === chainedRegular && jumpedNode.$chained !== chainedRegular) {
                     modified = true;
-                    jumped.$chained = chainedRegular;
+                    jumpedNode.$chained = chainedRegular;
                 }
-                if (target.$methodName && !jumped.$methodName) {
+                if (target.$methodName && !jumpedNode.$methodName) {
                     modified = true;
-                    jumped.$methodName = target.$methodName;
+                    jumpedNode.$methodName = target.$methodName;
                 }
             }
 
             const jumpedAndFollowed = followReference(jumped) || jumped;
-            if (jumpedAndFollowed !== jumped) { // we did follow a reference
-                if (jumped.$chained === chainedRegular && jumpedAndFollowed.$chained !== chainedRegular) {
+            if (jumpedAndFollowed.node !== jumped.node) { // we did follow a reference
+                if (jumped.node.$chained === chainedRegular && jumpedAndFollowed.node.$chained !== chainedRegular) {
                     modified = true;
-                    jumpedAndFollowed.$chained = chainedRegular;
+                    jumpedAndFollowed.node.$chained = chainedRegular;
                 }
-                if (jumped.$methodName && !jumpedAndFollowed.$methodName) {
+                if (jumped.node.$methodName && !jumpedAndFollowed.node.$methodName) {
                     modified = true;
-                    jumpedAndFollowed.$methodName = jumped.$methodName;
+                    jumpedAndFollowed.node.$methodName = jumped.node.$methodName;
                 }
             }
         });
         return modified;
     }
 
-    function isInsideModuleContext(node) {
-        let $parent = node.parent;
-        for (; $parent && $parent.$chained !== chainedRegular; $parent = $parent.$parent) {
+    function isInsideModuleContext(path) {
+        let $parent = path.parentPath;
+        for (; $parent && $parent.node.$chained !== chainedRegular; $parent = $parent.parentPath) {
         }
         return Boolean($parent);
     }
@@ -731,37 +737,36 @@ function judgeSuspects(ctx) {
     }
 }
 
-function followReference(nodeOrPath) {
-    const node = nodeOrPath.node || nodeOrPath;
-    return null;
-    if (!scopeTools.isReference(node)) {
+function followReference(path) {
+    if(!path || !path.node){
+        console.warn("not a path");
+    }
+    const node = path.node;
+    if (!scopeTools.isReference(path)) {
         return null;
     }
 
-    const scope = node.$scope.lookup(node.name);
-    if (!scope) {
+    const binding = path.scope.getBinding(node.name);
+    if(!binding){
+        console.warn("invalid binding");
         return null;
     }
 
-    const parent = scope.getNode(node.name).$parent;
-    const kind = scope.getKind(node.name);
-    if (!parent) {
-        return null;
-    }
-    const ptype = parent.type;
+    const kind = binding.kind;
+    const bound = binding.path;
 
     if (is.someof(kind, ["const", "let", "var"])) {
-        assert(ptype === "VariableDeclarator");
+        assert(t.isVariableDeclarator(bound));
         // {type: "VariableDeclarator", id: {type: "Identifier", name: "foo"}, init: ..}
-        return parent;
-    } else if (kind === "fun") {
-        assert(ptype === "FunctionDeclaration" || ptype === "FunctionExpression")
+        return bound;
+    } else if (kind === "hoisted") {
+        assert(t.isFunctionDeclaration(bound) || t.isFunctionExpression(bound));
         // FunctionDeclaration is the common case, i.e.
         // function foo(a, b) {}
 
         // FunctionExpression is only applicable for cases similar to
         // var f = function asdf(a,b) { mymod.controller("asdf", asdf) };
-        return parent;
+        return bound;
     }
 
     // other kinds should not be handled ("param", "caught")
@@ -848,26 +853,17 @@ function judgeInjectArraySuspect(path, ctx) {
         return;
     }
 
-    // const insertPos = {
-    //     pos: onode.range[1],
-    //     loc: onode.loc.end
-    // };
-    // const isSemicolonTerminated = (ctx.src[insertPos.pos - 1] === ";");
-
     // node = jumpOverIife(node);
 
     if (ctx.isFunctionExpressionWithArgs(node)) {
         // var x = 1, y = function(a,b) {}, z;
 
+        if(node.id && node.id.name !== declaratorName){
+            console.warn("Declarator name different", declaratorName);
+        }
+
         assert(declaratorName);
-        addInjectArrayAfterPath(node.params, opath, node.id.name);
-        // addRemoveInjectArray(
-        //     node.params,
-        //     isSemicolonTerminated ? insertPos : {
-        //         pos: node.range[1],
-        //         loc: node.loc.end
-        //     },
-        //     declaratorName);
+        addInjectArrayAfterPath(node.params, opath, declaratorName);
 
     } else if (ctx.isFunctionDeclarationWithArgs(node)) {
         // /*@ngInject*/ function foo($scope) {}
@@ -878,20 +874,21 @@ function judgeInjectArraySuspect(path, ctx) {
         // /*@ngInject*/ foo.bar[0] = function($scope) {}
 
         const name = ctx.srcForRange(node.expression.left.range);
-        addRemoveInjectArray(
-            node.expression.right.params,
-            isSemicolonTerminated ? insertPos : {
-                pos: node.expression.right.range[1],
-                loc: node.expression.right.loc.end
-            },
-            name);
+        console.warn("Expression statement unimplemented");
+        // addRemoveInjectArray(
+        //     node.expression.right.params,
+        //     isSemicolonTerminated ? insertPos : {
+        //         pos: node.expression.right.range[1],
+        //         loc: node.expression.right.loc.end
+        //     },
+        //     name);
 
-    } else if (node = followReference(node)) {
+    } else if (path = followReference(path)) {
         // node was a reference and followed node now is either a
         // FunctionDeclaration or a VariableDeclarator
         // => recurse
 
-        judgeInjectArraySuspect(node, ctx);
+        judgeInjectArraySuspect(path, ctx);
     }
 
 
@@ -908,15 +905,27 @@ function judgeInjectArraySuspect(path, ctx) {
         let paramStrings = params.map(param => t.stringLiteral(param.name));
         let arr = t.arrayExpression(paramStrings); // ["$scope"]
         let member = t.memberExpression(t.identifier(name), t.identifier("$inject")); // foo.$inject =
-        let inject = t.expressionStatement(t.assignmentExpression("=", member , arr));
+        return t.expressionStatement(t.assignmentExpression("=", member , arr));
     }
 
     function addInjectArrayBeforePath(params, path, name){
-        path.insertBefore(buildInjectExpression(params, name));
+        const binding = path.scope.getBinding(name);
+        if(binding && binding.kind === 'hoisted'){
+            let block = t.isProgram(binding.scope.block) ? binding.scope.block : binding.scope.block.body;
+            block.body.unshift(buildInjectExpression(params, name));
+        } else {
+            path.insertBefore(buildInjectExpression(params, name));
+        }
     }
 
     function addInjectArrayAfterPath(params, path, name){
-        path.insertAfter(buildInjectExpression(params, name));
+        let trailingComments;
+        if(path.node.trailingComments){
+            trailingComments = path.node.trailingComments;
+            path.node.trailingComments = [];
+        }
+        let newNode = path.insertAfter(buildInjectExpression(params, name));
+        newNode.trailingComments = trailingComments;
     }
 
     function addRemoveInjectArray(params, posAfterFunctionDeclaration, name) {
@@ -1028,21 +1037,25 @@ function judgeInjectArraySuspect(path, ctx) {
     }
 }
 
-function jumpOverIife(node) {
-    let outerfn;
-    if (!(t.isCallExpression(node) && t.isFunctionExpression(outerfn = node.callee))) {
-        return node;
+function jumpOverIife(path) {
+    const node = path.node;
+    if(!path.node){
+        console.warn("Not a path");
     }
 
-    const outerbody = outerfn.body.body;
+    if (!(t.isCallExpression(node) && t.isFunctionExpression(node.callee))) {
+        return path;
+    }
+
+    const outerbody = path.get("callee.body.body");
     for (let i = 0; i < outerbody.length; i++) {
         const statement = outerbody[i];
         if (t.isReturnStatement(statement)) {
-            return statement.argument;
+            return statement.get("argument");
         }
     }
 
-    return node;
+    return path;
 }
 
 function addModuleContextDependentSuspect(target, ctx) {
@@ -1050,7 +1063,7 @@ function addModuleContextDependentSuspect(target, ctx) {
 }
 
 function addModuleContextIndependentSuspect(target, ctx) {
-    target.$chained = chainedRegular;
+    target.node.$chained = chainedRegular;
     ctx.suspects.push(target);
 }
 

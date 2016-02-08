@@ -38,6 +38,14 @@ function inspectFunction(path, ctx) {
       return;
     }
 
+    if(t.isVariableDeclarator(path.parent) && t.isVariableDeclaration(path.parentPath.parent)){
+      var annotation = getAnnotation(path.parentPath.parent);
+      if(annotation !== null){
+        addSuspect(path.parentPath.parentPath, ctx, !annotation);
+        return;
+      }
+    }
+
     const str = matchPrologueDirectives(ngAnnotatePrologueDirectives, node);
     if (!str) {
         return;
@@ -136,6 +144,10 @@ function inspectObjectExpression(path, ctx) {
     if(t.isExpressionStatement(path.parentPath.parent)){
       candidates.unshift(path.parentPath.parent);
     }
+  }
+
+  if(t.isVariableDeclarator(path.parent) && t.isVariableDeclaration(path.parentPath.parent)){
+    candidates.unshift(path.parentPath.parent);
   }
 
   let annotateEverything = getAnnotations(candidates);
@@ -282,11 +294,12 @@ function addSuspect(path, ctx, block) {
         addObjectExpression(target.get("declarations")[0].get("init"), ctx);
     } else if (t.isProperty(target)) {
         // {/*@ngInject*/ justthisone: function(a), ..}
-        target.value.$limitToMethodName = "*never*";
-        addOrBlock(path.get("value"), ctx);
+        let value = path.get("value");
+        value.$limitToMethodName = "*never*";
+        addOrBlock(value, ctx);
     } else {
         // /*@ngInject*/ function(a) {}
-        target.$limitToMethodName = "*never*";
+        path.$limitToMethodName = "*never*";
         addOrBlock(path, ctx);
     }
 
