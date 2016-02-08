@@ -18,48 +18,54 @@ const optionalAngularDashboardFramework = require("./optionals/angular-dashboard
 const require_acorn_t0 = Date.now();
 const parser = require("acorn").parse;
 const require_acorn_t1 = Date.now();
+const t = require('babel-types');
+
 
 const chainedRouteProvider = 1;
 const chainedUrlRouterProvider = 2;
 const chainedStateProvider = 3;
 const chainedRegular = 4;
 
-function match(node, ctx, matchPlugins) {
+function match(path, ctx, matchPlugins) {
+    const node = path.node;
     const isMethodCall = (
-        node.type === "CallExpression" &&
-            node.callee.type === "MemberExpression" &&
+        t.isCallExpression(node) &&
+            t.isMemberExpression(node.callee) &&
             node.callee.computed === false
         );
+
+    if(isMethodCall && ngInject.inspectComment(path, ctx)){
+        return false;
+    }
 
     // matchInjectorInvoke must happen before matchRegular
     // to prevent false positive ($injector.invoke() outside module)
     // matchProvide must happen before matchRegular
     // to prevent regular from matching it as a short-form
     const matchMethodCalls = (isMethodCall &&
-        (matchInjectorInvoke(node) || matchProvide(node, ctx) || matchRegular(node, ctx) || matchNgRoute(node) || matchMaterialShowModalOpen(node) || matchNgUi(node) || matchHttpProvider(node) || matchControllerProvider(node)));
+        (matchInjectorInvoke(path) || matchProvide(path, ctx) || matchRegular(path, ctx) || matchNgRoute(path) || matchMaterialShowModalOpen(path) || matchNgUi(path) || matchHttpProvider(path) || matchControllerProvider(path)));
 
-    return matchMethodCalls ||
-        (matchPlugins && matchPlugins(node)) ||
-        matchDirectiveReturnObject(node) ||
-        matchProviderGet(node);
+    return matchMethodCalls;
 }
 
-function matchMaterialShowModalOpen(node) {
+function matchMaterialShowModalOpen(path) {
     // $mdDialog.show({.. controller: fn, resolve: {f: function($scope) {}, ..}});
     // $mdToast.show({.. controller: fn, resolve: {f: function($scope) {}, ..}});
     // $mdBottomSheet.show({.. controller: fn, resolve: {f: function($scope) {}, ..}});
     // $modal.open({.. controller: fn, resolve: {f: function($scope) {}, ..}});
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
     const args = node.arguments;
 
-    if (obj.type === "Identifier" &&
+    if (t.isIdentifier(obj) &&
         ((is.someof(obj.name, ["$modal", "$uibModal"]) && method.name === "open") || (is.someof(obj.name, ["$mdDialog", "$mdToast", "$mdBottomSheet"]) && method.name === "show")) &&
-        args.length === 1 && args[0].type === "ObjectExpression") {
-        const props = args[0].properties;
+        args.length === 1 && t.isObjectExpression(args[0])) {
+        let args = path.get("arguments");
+        const props = args[0].get("properties");
         const res = [matchProp("controller", props)];
         res.push.apply(res, matchResolve(props));
         return res.filter(Boolean);
@@ -67,36 +73,41 @@ function matchMaterialShowModalOpen(node) {
     return false;
 }
 
-function matchDirectiveReturnObject(node) {
+function matchDirectiveReturnObject(pathOrNode) {
+    const node = pathOrNode.node || pathOrNode;
+
     // only matches inside directives
     // return { .. controller: function($scope, $timeout), ...}
 
-    return limit("directive", node.type === "ReturnStatement" &&
-        node.argument && node.argument.type === "ObjectExpression" &&
-        matchProp("controller", node.argument.properties));
+    return limit("directive", t.isReturnStatement(node) &&
+        node.argument && t.isObjectExpression(node.argument) &&
+        matchProp("controller", (pathOrNode.get && pathOrNode.get("argument.properties") || node.argument.properties)));
 }
 
-function limit(name, node) {
+function limit(name, pathOrNode) {
+    const node = (pathOrNode && pathOrNode.node) || pathOrNode;
+
     if (node && !node.$limitToMethodName) {
         node.$limitToMethodName = name;
     }
-    return node;
+    return pathOrNode;
 }
 
-function matchProviderGet(node) {
+function matchProviderGet(path) {
     // only matches inside providers
     // (this|self|that).$get = function($scope, $timeout)
     // { ... $get: function($scope, $timeout), ...}
+    const node = path.node;
     let memberExpr;
     let self;
-    return limit("provider", (node.type === "AssignmentExpression" && (memberExpr = node.left).type === "MemberExpression" &&
+    return limit("provider", (t.isAssignmentExpression(node) && t.isMemberExpression(memberExpr = node.left) &&
         memberExpr.property.name === "$get" &&
-        ((self = memberExpr.object).type === "ThisExpression" || (self.type === "Identifier" && is.someof(self.name, ["self", "that"]))) &&
-        node.right) ||
-        (node.type === "ObjectExpression" && matchProp("$get", node.properties)));
+        (t.isThisExpression(self = memberExpr.object) || (t.isIdentifier(self) && is.someof(self.name, ["self", "that"]))) &&
+        path.get("right")) ||
+        (t.isObjectExpression(node) && matchProp("$get", path.get("properties"))));
 }
 
-function matchNgRoute(node) {
+function matchNgRoute(path) {
     // $routeProvider.when("path", {
     //   ...
     //   controller: function($scope) {},
@@ -104,9 +115,10 @@ function matchNgRoute(node) {
     // })
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
-    if (!(obj.$chained === chainedRouteProvider || (obj.type === "Identifier" && obj.name === "$routeProvider"))) {
+    if (!(obj.$chained === chainedRouteProvider || (t.isIdentifier(obj) && obj.name === "$routeProvider"))) {
         return false;
     }
     node.$chained = chainedRouteProvider;
@@ -116,16 +128,16 @@ function matchNgRoute(node) {
         return false;
     }
 
-    const args = node.arguments;
+    const args = path.get("arguments");
     if (args.length !== 2) {
         return false;
     }
     const configArg = last(args)
-    if (configArg.type !== "ObjectExpression") {
+    if (!t.isObjectExpression(configArg)) {
         return false;
     }
 
-    const props = configArg.properties;
+    const props = configArg.get("properties");
     const res = [
         matchProp("controller", props)
     ];
@@ -136,7 +148,7 @@ function matchNgRoute(node) {
     return (filteredRes.length === 0 ? false : filteredRes);
 }
 
-function matchNgUi(node) {
+function matchNgUi(path) {
     // $stateProvider.state("myState", {
     //     ...
     //     controller: function($scope)
@@ -157,13 +169,14 @@ function matchNgUi(node) {
     // $modal.open see matchMaterialShowModalOpen
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
-    const args = node.arguments;
+    let args = path.get("arguments");
 
     // shortcut for $urlRouterProvider.when(.., function($scope) {})
-    if (obj.$chained === chainedUrlRouterProvider || (obj.type === "Identifier" && obj.name === "$urlRouterProvider")) {
+    if (obj.$chained === chainedUrlRouterProvider || (t.isIdentifier(obj) && obj.name === "$urlRouterProvider")) {
         node.$chained = chainedUrlRouterProvider;
 
         if (method.name === "when" && args.length >= 1) {
@@ -173,7 +186,7 @@ function matchNgUi(node) {
     }
 
     // everything below is for $stateProvider and stateHelperProvider alone
-    if (!(obj.$chained === chainedStateProvider || (obj.type === "Identifier" && is.someof(obj.name, ["$stateProvider", "stateHelperProvider"])))) {
+    if (!(obj.$chained === chainedStateProvider || (t.isIdentifier(obj) && is.someof(obj.name, ["$stateProvider", "stateHelperProvider"])))) {
         return false;
     }
     node.$chained = chainedStateProvider;
@@ -198,12 +211,12 @@ function matchNgUi(node) {
     return (filteredRes.length === 0 ? false : filteredRes);
 
 
-    function recursiveMatch(objectExpressionNode) {
-        if (!objectExpressionNode || objectExpressionNode.type !== "ObjectExpression") {
+    function recursiveMatch(objectExpressionPath) {
+        if (!objectExpressionPath || !t.isObjectExpression(objectExpressionPath)) {
             return false;
         }
 
-        const properties = objectExpressionNode.properties;
+        const properties = objectExpressionPath.get("properties");
 
         matchStateProps(properties, res);
 
@@ -231,70 +244,78 @@ function matchNgUi(node) {
 
         // {params: {simple: function($scope) {}, inValue: { value: function($scope) {} }}
         const a = matchProp("params", props);
-        if (a && a.type === "ObjectExpression") {
-            a.properties.forEach(function(prop) {
-                if (prop.value.type === "ObjectExpression") {
-                    res.push(matchProp("value", prop.value.properties));
+        if (a && t.isObjectExpression(a)) {
+            a.get("properties").forEach(function(prop) {
+                let value = prop.get("value");
+                if (t.isObjectExpression(value)) {
+                    res.push(matchProp("value", value.get("properties")));
                 } else {
-                    res.push(prop.value);
+                    res.push(value);
                 }
             });
         }
 
         // {view: ...}
         const viewObject = matchProp("views", props);
-        if (viewObject && viewObject.type === "ObjectExpression") {
-            viewObject.properties.forEach(function(prop) {
-                if (prop.value.type === "ObjectExpression") {
-                    res.push(matchProp("controller", prop.value.properties));
-                    res.push(matchProp("controllerProvider", prop.value.properties));
-                    res.push(matchProp("templateProvider", prop.value.properties));
-                    res.push.apply(res, matchResolve(prop.value.properties));
+        if (viewObject && t.isObjectExpression(viewObject)) {
+            viewObject.get("properties").forEach(function(prop) {
+                let value = prop.get("value");
+                if (t.isObjectExpression(value)) {
+                    let props = value.get("properties");
+                    res.push(matchProp("controller", props));
+                    res.push(matchProp("controllerProvider", props));
+                    res.push(matchProp("templateProvider", props));
+                    res.push.apply(res, matchResolve(props));
                 }
             });
         }
     }
 }
 
-function matchInjectorInvoke(node) {
+function matchInjectorInvoke(path) {
     // $injector.invoke(function($compile) { ... });
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
+    let args;
 
     return method.name === "invoke" &&
-        obj.type === "Identifier" && obj.name === "$injector" &&
-        node.arguments.length >= 1 && node.arguments;
+        t.isIdentifier(obj) && obj.name === "$injector" &&
+        (args = path.get("arguments")).length >= 1 && args;
 }
 
-function matchHttpProvider(node) {
+function matchHttpProvider(path) {
     // $httpProvider.interceptors.push(function($scope) {});
     // $httpProvider.responseInterceptors.push(function($scope) {});
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
+    let args;
 
     return (method.name === "push" &&
-        obj.type === "MemberExpression" && !obj.computed &&
+        t.isMemberExpression(obj) && !obj.computed &&
         obj.object.name === "$httpProvider" && is.someof(obj.property.name,  ["interceptors", "responseInterceptors"]) &&
-        node.arguments.length >= 1 && node.arguments);
+        (args = path.get("arguments")).length >= 1 && args);
 }
 
-function matchControllerProvider(node) {
+function matchControllerProvider(path) {
     // $controllerProvider.register("foo", function($scope) {});
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
-    const args = node.arguments;
+    let args;
 
-    const target = obj.type === "Identifier" && obj.name === "$controllerProvider" &&
-        method.name === "register" && args.length === 2 && args[1];
+    const target = t.isIdentifier(obj) && obj.name === "$controllerProvider" &&
+        method.name === "register" && (args = path.get("arguments")).length === 2 && args[1];
 
     if (target) {
         target.$methodName = method.name;
@@ -302,23 +323,25 @@ function matchControllerProvider(node) {
     return target;
 }
 
-function matchProvide(node, ctx) {
+function matchProvide(path, ctx) {
     // $provide.decorator("foo", function($scope) {});
     // $provide.service("foo", function($scope) {});
     // $provide.factory("foo", function($scope) {});
     // $provide.provider("foo", function($scope) {});
 
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
-    const args = node.arguments;
+    const args = path.get("arguments");
 
-    const target = obj.type === "Identifier" && obj.name === "$provide" &&
+    const target = t.isIdentifier(obj) && obj.name === "$provide" &&
         is.someof(method.name, ["decorator", "service", "factory", "provider"]) &&
         args.length === 2 && args[1];
 
     if (target) {
+        target.node.$methodName = method.name;
         target.$methodName = method.name;
 
         if (ctx.rename) {
@@ -329,8 +352,9 @@ function matchProvide(node, ctx) {
     return target;
 }
 
-function matchRegular(node, ctx) {
+function matchRegular(path, ctx) {
     // we already know that node is a (non-computed) method call
+    const node = path.node;
     const callee = node.callee;
     const obj = callee.object; // identifier or expression
     const method = callee.property; // identifier
@@ -338,7 +362,7 @@ function matchRegular(node, ctx) {
     // short-cut implicit config special case:
     // angular.module("MyMod", function(a) {})
     if (obj.name === "angular" && method.name === "module") {
-        const args = node.arguments;
+        const args = path.get("arguments");
         if (args.length >= 2) {
             node.$chained = chainedRegular;
             return last(args);
@@ -351,7 +375,7 @@ function matchRegular(node, ctx) {
         return false;
     }
 
-    const matchAngularModule = (obj.$chained === chainedRegular || isReDef(obj, ctx) || isLongDef(obj)) &&
+    const matchAngularModule = (obj.$chained === chainedRegular || isReDef(obj,ctx) || isLongDef(obj)) &&
         is.someof(method.name, ["provider", "value", "constant", "bootstrap", "config", "factory", "directive", "filter", "run", "controller", "service", "animation", "invoke", "store", "decorator", "component"]);
     if (!matchAngularModule) {
         return false;
@@ -363,20 +387,22 @@ function matchRegular(node, ctx) {
     }
 
     const args = node.arguments;
+    const argPaths = path.get("arguments");
     let target = (is.someof(method.name, ["config", "run"]) ?
-        args.length === 1 && args[0] :
-        args.length === 2 && args[0].type === "Literal" && is.string(args[0].value) && args[1]);
+        args.length === 1 && argPaths[0] :
+        args.length === 2 && t.isLiteral(args[0]) && is.string(args[0].value) && argPaths[1]);
 
     if (method.name === "component") {
-        const controllerProp = (target && target.type === "ObjectExpression" && matchProp("controller", target.properties));
-        if (!controllerProp) {
+        const controllers = target.get("properties").filter(prop => prop.node.key.name == "controller");
+        if(controllers.length === 1) {
+            target = controllers[0].get("value");
+        } else {
             return false;
         }
-        target = controllerProp;
     }
 
     if (target) {
-        target.$methodName = method.name;
+        target.node.$methodName = method.name;
     }
 
     if (ctx.rename && args.length === 2 && target) {
@@ -393,7 +419,7 @@ function matchRegular(node, ctx) {
 // matches with --regexp "^require(.*)$"
 //   require("app-module").controller("MyCtrl", function($scope) {});
 function isReDef(node, ctx) {
-    return ctx.re.test(ctx.srcForRange(node.range));
+    return ctx.re.test(ctx.srcForRange(node));
 }
 
 // Long form: angular.module(*).controller("MyCtrl", function($scope, $timeout) {});
@@ -409,10 +435,12 @@ function last(arr) {
 
 function matchProp(name, props) {
     for (let i = 0; i < props.length; i++) {
-        const prop = props[i];
-        if ((prop.key.type === "Identifier" && prop.key.name === name) ||
-            (prop.key.type === "Literal" && prop.key.value === name)) {
-            return prop.value; // FunctionExpression or ArrayExpression
+        const propOrPath = props[i];
+        const prop = propOrPath.node || propOrPath;
+
+        if ((t.isIdentifier(prop.key) && prop.key.name === name) ||
+            (t.isLiteral(prop.key) && prop.key.value === name)) {
+            return (propOrPath.get && propOrPath.get("value")) || prop.value; // FunctionExpression or ArrayExpression
         }
     }
     return null;
@@ -420,9 +448,9 @@ function matchProp(name, props) {
 
 function matchResolve(props) {
     const resolveObject = matchProp("resolve", props);
-    if (resolveObject && resolveObject.type === "ObjectExpression") {
-        return resolveObject.properties.map(function(prop) {
-            return prop.value;
+    if (resolveObject && t.isObjectExpression(resolveObject)) {
+        return resolveObject.get("properties").map(function(prop) {
+            return prop.get("value");
         });
     }
     return [];
@@ -479,27 +507,44 @@ function replaceNodeWith(node, newNode) {
     assert(done);
 }
 
-function insertArray(ctx, functionExpression, fragments, quot) {
-    const args = stringify(ctx, functionExpression.params, quot);
+function insertArray(ctx, path, fragments, quot) {
+    if(!path.node){
+        console.warn("Not a path", path, path.loc.start, path.loc.end);
+        return;
+    }
 
-    fragments.push({
-        start: functionExpression.range[0],
-        end: functionExpression.range[0],
-        str: args.slice(0, -1) + ", ",
-        loc: {
-            start: functionExpression.loc.start,
-            end: functionExpression.loc.start
-        }
-    });
-    fragments.push({
-        start: functionExpression.range[1],
-        end: functionExpression.range[1],
-        str: "]",
-        loc: {
-            start: functionExpression.loc.end,
-            end: functionExpression.loc.end
-        }
-    });
+    // const args = stringify(ctx, functionExpression.params, quot);
+
+    // fragments.push({
+    //     start: functionExpression.range[0],
+    //     end: functionExpression.range[0],
+    //     str: args.slice(0, -1) + ", ",
+    //     loc: {
+    //         start: functionExpression.loc.start,
+    //         end: functionExpression.loc.start
+    //     }
+    // });
+    // fragments.push({
+    //     start: functionExpression.range[1],
+    //     end: functionExpression.range[1],
+    //     str: "]",
+    //     loc: {
+    //         start: functionExpression.loc.end,
+    //         end: functionExpression.loc.end
+    //     }
+    // });
+
+    let toParam = path.node.params.map(param => param.name);
+    let elems = toParam.map(i => t.stringLiteral(i));
+
+    elems.push(path.node);
+
+    path.replaceWith(
+        t.expressionStatement(
+            t.arrayExpression(elems)
+        )
+    );
+
 }
 
 function replaceArray(ctx, array, fragments, quot) {
@@ -594,9 +639,10 @@ function judgeSuspects(ctx) {
         return jumpedAndFollowed;
     }).filter(Boolean), 2);
 
-    finalSuspects.forEach(function(target) {
+    finalSuspects.forEach(function(nodeOrPath) {
+        let target = nodeOrPath.node || nodeOrPath;
         if (target.$chained !== chainedRegular) {
-            return;
+            // return;
         }
 
         if (mode === "rebuild" && isAnnotatedArray(target)) {
@@ -604,12 +650,13 @@ function judgeSuspects(ctx) {
         } else if (mode === "remove" && isAnnotatedArray(target)) {
             removeArray(target, fragments);
         } else if (is.someof(mode, ["add", "rebuild"]) && isFunctionExpressionWithArgs(target)) {
-            insertArray(ctx, target, fragments, quot);
+            insertArray(ctx, nodeOrPath, fragments, quot);
         } else if (isGenericProviderName(target)) {
-            renameProviderDeclarationSite(ctx, target, fragments);
+            console.warn("Generic provider rename disabled");
+            // renameProviderDeclarationSite(ctx, target, fragments);
         } else {
             // if it's not array or function-expression, then it's a candidate for foo.$inject = [..]
-            judgeInjectArraySuspect(target, ctx);
+            judgeInjectArraySuspect(nodeOrPath, ctx);
         }
     });
 
@@ -637,7 +684,8 @@ function judgeSuspects(ctx) {
 
     function setChainedAndMethodNameThroughIifesAndReferences(suspects) {
         let modified = false;
-        suspects.forEach(function(target) {
+        suspects.forEach(function(nodeOrPath) {
+            const target = nodeOrPath.node || nodeOrPath;
             const jumped = jumpOverIife(target);
             if (jumped !== target) { // we did skip an IIFE
                 if (target.$chained === chainedRegular && jumped.$chained !== chainedRegular) {
@@ -666,7 +714,7 @@ function judgeSuspects(ctx) {
     }
 
     function isInsideModuleContext(node) {
-        let $parent = node.$parent;
+        let $parent = node.parent;
         for (; $parent && $parent.$chained !== chainedRegular; $parent = $parent.$parent) {
         }
         return Boolean($parent);
@@ -683,7 +731,9 @@ function judgeSuspects(ctx) {
     }
 }
 
-function followReference(node) {
+function followReference(nodeOrPath) {
+    const node = nodeOrPath.node || nodeOrPath;
+    return null;
     if (!scopeTools.isReference(node)) {
         return null;
     }
@@ -741,12 +791,12 @@ function posToLine(pos, src) {
 
 function firstNonPrologueStatement(body) {
     for (let i = 0; i < body.length; i++) {
-        if (body[i].type !== "ExpressionStatement") {
+        if (!t.isExpressionStatement(body[i])) {
             return body[i];
         }
 
         const expr = body[i].expression;
-        const isStringLiteral = (expr.type === "Literal" && typeof expr.value === "string");
+        const isStringLiteral = (t.isLiteral(expr) && typeof expr.value === "string");
         if (!isStringLiteral) {
             return body[i];
         }
@@ -754,8 +804,10 @@ function firstNonPrologueStatement(body) {
     return null;
 }
 
-function judgeInjectArraySuspect(node, ctx) {
-    if (node.type === "VariableDeclaration") {
+function judgeInjectArraySuspect(path, ctx) {
+    let node = path.node;
+
+    if (t.isVariableDeclaration(node)) {
         // suspect can only be a VariableDeclaration (statement) in case of
         // explicitly marked via /*@ngInject*/, not via references because
         // references follow to VariableDeclarator (child)
@@ -769,55 +821,59 @@ function judgeInjectArraySuspect(node, ctx) {
 
         // one declarator => jump over declaration into declarator
         // rest of code will treat it as any (referenced) declarator
-        node = node.declarations[0];
+        path = path.get("declarations")[0];
+        node = path.node;
     }
 
     // onode is a top-level node (inside function block), later verified
     // node is inner match, descent in multiple steps
     let onode = null;
+    let opath = null;
     let declaratorName = null;
-    if (node.type === "VariableDeclarator") {
-        onode = node.$parent;
+    if (t.isVariableDeclarator(node)) {
+        onode = path.parent;
+        opath = path.parentPath;
+
         declaratorName = node.id.name;
         node = node.init; // var foo = ___;
+        path = path.get("init");
+
     } else {
         onode = node;
+        opath = path;
     }
 
     // suspect must be inside of a block or at the top-level (i.e. inside of node.$parent.body[])
-    if (!node || !onode.$parent || is.noneof(onode.$parent.type, ["Program", "BlockStatement"])) {
+    if (!node || !opath.parent || (!t.isProgram(opath.parent) && !t.isBlockStatement(opath.parent))) {
         return;
     }
 
-    const insertPos = {
-        pos: onode.range[1],
-        loc: onode.loc.end
-    };
-    const isSemicolonTerminated = (ctx.src[insertPos.pos - 1] === ";");
+    // const insertPos = {
+    //     pos: onode.range[1],
+    //     loc: onode.loc.end
+    // };
+    // const isSemicolonTerminated = (ctx.src[insertPos.pos - 1] === ";");
 
-    node = jumpOverIife(node);
+    // node = jumpOverIife(node);
 
     if (ctx.isFunctionExpressionWithArgs(node)) {
         // var x = 1, y = function(a,b) {}, z;
 
         assert(declaratorName);
-        addRemoveInjectArray(
-            node.params,
-            isSemicolonTerminated ? insertPos : {
-                pos: node.range[1],
-                loc: node.loc.end
-            },
-            declaratorName);
+        addInjectArrayAfterPath(node.params, opath, node.id.name);
+        // addRemoveInjectArray(
+        //     node.params,
+        //     isSemicolonTerminated ? insertPos : {
+        //         pos: node.range[1],
+        //         loc: node.loc.end
+        //     },
+        //     declaratorName);
 
     } else if (ctx.isFunctionDeclarationWithArgs(node)) {
         // /*@ngInject*/ function foo($scope) {}
+        addInjectArrayBeforePath(node.params,path,node.id.name);
 
-        addRemoveInjectArray(
-            node.params,
-            insertPos,
-            node.id.name);
-
-    } else if (node.type === "ExpressionStatement" && node.expression.type === "AssignmentExpression" &&
+    } else if (t.isExpressionStatement(node) && t.isAssignmentExpression(node.expression) &&
         ctx.isFunctionExpressionWithArgs(node.expression.right)) {
         // /*@ngInject*/ foo.bar[0] = function($scope) {}
 
@@ -848,6 +904,21 @@ function judgeInjectArraySuspect(node, ctx) {
         return src.slice(lineStart, i);
     }
 
+    function buildInjectExpression(params, name){
+        let paramStrings = params.map(param => t.stringLiteral(param.name));
+        let arr = t.arrayExpression(paramStrings); // ["$scope"]
+        let member = t.memberExpression(t.identifier(name), t.identifier("$inject")); // foo.$inject =
+        let inject = t.expressionStatement(t.assignmentExpression("=", member , arr));
+    }
+
+    function addInjectArrayBeforePath(params, path, name){
+        path.insertBefore(buildInjectExpression(params, name));
+    }
+
+    function addInjectArrayAfterPath(params, path, name){
+        path.insertAfter(buildInjectExpression(params, name));
+    }
+
     function addRemoveInjectArray(params, posAfterFunctionDeclaration, name) {
         // if an existing something.$inject = [..] exists then is will always be recycled when rebuilding
 
@@ -871,7 +942,7 @@ function judgeInjectArraySuspect(node, ctx) {
             }
 
             let e;
-            if (!nodeAfterExtends && !foundSuspectInBody && bnode.type === "ExpressionStatement" && (e = bnode.expression).type === "CallExpression" && e.callee.type === "Identifier" && e.callee.name === "__extends") {
+            if (!nodeAfterExtends && !foundSuspectInBody && t.isExpressionStatement(bnode) && t.isCallExpression(e = bnode.expression) && t.isIdentifier(e.callee) && e.callee.name === "__extends") {
                 const nextStatement = onode.$parent.body[idx + 1];
                 if (nextStatement) {
                     nodeAfterExtends = nextStatement;
@@ -879,7 +950,7 @@ function judgeInjectArraySuspect(node, ctx) {
             }
         });
         assert(foundSuspectInBody);
-        if (onode.type === "FunctionDeclaration") {
+        if (t.isFunctionDeclaration(onode)) {
             if (!nodeAfterExtends) {
                 nodeAfterExtends = firstNonPrologueStatement(onode.$parent.body);
             }
@@ -891,11 +962,11 @@ function judgeInjectArraySuspect(node, ctx) {
         function hasInjectArray(node) {
             let lvalue;
             let assignment;
-            return (node && node.type === "ExpressionStatement" && (assignment = node.expression).type === "AssignmentExpression" &&
+            return (node && t.isExpressionStatement(node) && t.isAssignmentExpression(assignment = node.expression) &&
                 assignment.operator === "=" &&
-                (lvalue = assignment.left).type === "MemberExpression" &&
+                t.isMemberExpression(lvalue = assignment.left) &&
                 ((lvalue.computed === false && ctx.srcForRange(lvalue.object.range) === name && lvalue.property.name === "$inject") ||
-                    (lvalue.computed === true && ctx.srcForRange(lvalue.object.range) === name && lvalue.property.type === "Literal" && lvalue.property.value === "$inject")));
+                    (lvalue.computed === true && ctx.srcForRange(lvalue.object.range) === name && t.isLiteral(lvalue.property) && lvalue.property.value === "$inject")));
         }
 
         function skipPrevNewline(pos, loc) {
@@ -959,14 +1030,14 @@ function judgeInjectArraySuspect(node, ctx) {
 
 function jumpOverIife(node) {
     let outerfn;
-    if (!(node.type === "CallExpression" && (outerfn = node.callee).type === "FunctionExpression")) {
+    if (!(t.isCallExpression(node) && t.isFunctionExpression(outerfn = node.callee))) {
         return node;
     }
 
     const outerbody = outerfn.body.body;
     for (let i = 0; i < outerbody.length; i++) {
         const statement = outerbody[i];
-        if (statement.type === "ReturnStatement") {
+        if (t.isReturnStatement(statement)) {
             return statement.argument;
         }
     }
@@ -984,20 +1055,20 @@ function addModuleContextIndependentSuspect(target, ctx) {
 }
 
 function isAnnotatedArray(node) {
-    if (node.type !== "ArrayExpression") {
+    if (!t.isArrayExpression(node)) {
         return false;
     }
     const elements = node.elements;
 
     // last should be a function expression
-    if (elements.length === 0 || last(elements).type !== "FunctionExpression") {
+    if (elements.length === 0 || !t.isFunctionExpression(last(elements))) {
         return false;
     }
 
     // all but last should be string literals
     for (let i = 0; i < elements.length - 1; i++) {
         const n = elements[i];
-        if (n.type !== "Literal" || !is.string(n.value)) {
+        if (!t.isLiteral(n) || !is.string(n.value)) {
             return false;
         }
     }
@@ -1005,13 +1076,13 @@ function isAnnotatedArray(node) {
     return true;
 }
 function isFunctionExpressionWithArgs(node) {
-    return node.type === "FunctionExpression" && node.params.length >= 1;
+    return t.isFunctionExpression(node) && node.params.length >= 1;
 }
 function isFunctionDeclarationWithArgs(node) {
-    return node.type === "FunctionDeclaration" && node.params.length >= 1;
+    return t.isFunctionDeclaration(node) && node.params.length >= 1;
 }
 function isGenericProviderName(node) {
-    return node.type === "Literal" && is.string(node.value);
+    return t.isLiteral(node) && is.string(node.value);
 }
 
 function uniqifyFragments(fragments) {
@@ -1224,3 +1295,19 @@ module.exports = function ngAnnotate(src, options) {
 
     return result;
 }
+
+module.exports.match = match;
+module.exports.isFunctionExpressionWithArgs = isFunctionExpressionWithArgs;
+module.exports.isFunctionDeclarationWithArgs = isFunctionDeclarationWithArgs;
+module.exports.isGenericProviderName = isGenericProviderName;
+module.exports.isAnnotatedArray = isAnnotatedArray;
+module.exports.addModuleContextDependentSuspect = addModuleContextDependentSuspect;
+module.exports.addModuleContextIndependentSuspect = addModuleContextIndependentSuspect;
+module.exports.stringify = stringify;
+module.exports.matchResolve = matchResolve;
+module.exports.matchProp = matchProp;
+module.exports.last = last;
+module.exports.allOptionals = allOptionals;
+module.exports.judgeSuspects = judgeSuspects;
+module.exports.matchDirectiveReturnObject = matchDirectiveReturnObject;
+module.exports.matchProviderGet = matchProviderGet;

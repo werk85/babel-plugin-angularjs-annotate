@@ -1,126 +1,63 @@
-# ng-annotate [![Build Status](https://travis-ci.org/olov/ng-annotate.svg?branch=master)](https://travis-ci.org/olov/ng-annotate)
-ng-annotate adds and removes AngularJS dependency injection annotations.
+# babel-plugin-angularjs-annotate
 
-Write your code without annotations and mark-up functions to be annotated 
-with the `"ngInject"` directive prologue, just like you would 
-`"use strict"`. This must be at the beginning of your function.
+Experimental fork of [ng-annotate](https://github.com/olov/ng-annotate).  
 
-```js
-$ cat source.js
-angular.module("MyMod").controller("MyCtrl", function($scope, $timeout) {
-    "ngInject";
-    ...
-});
+Work in progress.  **Do not use this for anything serious.**  My code is a mess, and this does not
+cover the full set of cases supported by ng-annotate.  Stick with [ng-annotate](https://github.com/olov/ng-annotate)
+or [babel-ng-annotate](https://github.com/mchmielarski/babel-plugin-ng-annotate) for now.
+
+## Goals & Tasks
+
+This project/experiment does _not_ seek to replace ng-annotate.  However, it does seek to provide the same 
+function for Angular 1.x developers who are already using Babel and/or ES6 in their toolchain.
+
+Because of some of the limitations presented by Babel's transformation process, this project does not seek to 
+achieve feature, or provide 1:1 equivalent output with ng-annotate.  Most notably, whitespace will not be 
+preserved.
+
+Initially, I had hoped to make very few modifications to the upstream sources, in the hopes of eventually
+merging babel support directly into ng-annotate.  Unfortunately, Babylon appears to have diverged too 
+far from Esprima to make that goal realistic.  (I would love to be proven wrong here!)
+
+That being said, this is my short-term todo list:
+
+* Support the majority of invocations/annotations currently performed by ng-annotate
+* Split up ng-annotate's test suite to be more granular and tolerant of some of babel's other transforms.
+* Actually pass those tests.
+* Cleanup.  Remove vestigial functionality from the upstream project.
+* Support a (very) limited set of ES6-friendly annotation patterns.  
+* Publish to npm, make a release, etc.
+
+
+## Don't Say I Didn't Warn You
+
+To test this mess of an experiment, compile the ES6 sources into something that Node can run:
+
+```
+babel babel-ng-annotate.js -o babel-ng-annotate-harmony.js
 ```
 
-Then run ng-annotate as a build-step to produce this intermediary,
-annotated, result (later sent to the minifier of choice):
+Create a .babelrc file for your sources 
 
-```js
-$ ng-annotate -a source.js
-angular.module("MyMod").controller("MyCtrl", ["$scope", "$timeout", function($scope, $timeout) {
-    "ngInject";
-    ...
-}]);
+```json
+{
+  "presets": ["es2015"],
+  "plugins": ["path/to/babel-ng-annotate-harmony"]
+}
+
 ```
 
-Your minifier will most likely retain the `"ngInject"` prologues so use `sed`
-or a regexp in your build toolchain to get rid of those on the ng-annotate output.
-`sed` example: `ng-annotate -a source.js | sed "s/[\"']ngInject[\"'];*//g"`.
-JavaScript regexp example: `source.replace(/["']ngInject["'];*/g, "")`.
+And try it out:
 
-You can also use ng-annotate to rebuild or remove existing annotations.
-Rebuilding is useful if you like to check-in the annotated version of your
-source code. When refactoring, just change parameter names once and let
-ng-annotate rebuild the annotations. Removing is useful if you want to
-de-annotate an existing codebase that came with checked-in annotations
-
-
-## Installation and usage
-
-```bash
-npm install -g ng-annotate
+```
+babel original.js
 ```
 
-Then run it as `ng-annotate OPTIONS <file>`. The errors (if any) will go to stderr,
-the transpiled output to stdout.
-
-The simplest usage is `ng-annotate -a infile.js > outfile.js`.
-See [OPTIONS.md](OPTIONS.md) for command-line documentation.
-
-ng-annotate can be used as a library, see [OPTIONS.md](OPTIONS.md) for its API.
-
-
-## Implicit matching of common code forms
-ng-annotate uses static analysis to detect common AngularJS code patterns. When
-this works it means that you do not need to mark-up functions with `"ngInject"`.
-For a lot of code bases this works very well (use `ng-strict-di` to simplify 
-debugging when it doesn't) but for others it is less reliable and you may prefer 
-to use `"ngInject"` instead. For more information about implicit matching see 
-[IMPLICIT.md](IMPLICIT.md).
-
-
-## Explicit annotations with ngInject
-The recommended `function foo($scope) { "ngInject"; ... }` can be exchanged
-for `/*@ngInject*/ function foo($scope) { ... }` or
-`ngInject(function foo($scope) { ... })`. If you use the latter form then
-then add `function ngInject(v) { return v }` somewhere in your codebase or process
-away the `ngInject` function call in your build step.
-
-
-### Suppressing false positives with ngNoInject
-The `/*@ngInject*/`, `ngInject(..)` and `"ngInject"` siblings have three cousins that
-are used for the opposite purpose, suppressing an annotation that ng-annotate added
-incorrectly (a "false positive"). They are called `/*@ngNoInject*/`, `ngNoInject(..)`
-and `"ngNoInject"` and do exactly what you think they do.
-
-
-## ES6 and TypeScript support
-ng-annotate supports ES5 as input so run it with the output from Babel, Traceur,
-TypeScript (tsc) and the likes. Use `"ngInject"` on functions you want annotated.
-Your transpiler should preserve directive prologues, if not please file a bug on it.
-
-
-## Highly recommended: enable ng-strict-di
-`<div ng-app="myApp" ng-strict-di>`
-
-Do that in your ng-annotate processed (but not minified) builds and AngularJS will
-let you know if there are any missing dependency injection annotations.
-[ng-strict-di](https://docs.angularjs.org/api/ng/directive/ngApp) is available in 
-AngularJS 1.3 or later.
-
-
-## Tools support
-* [Grunt](http://gruntjs.com/): [grunt-ng-annotate](https://www.npmjs.org/package/grunt-ng-annotate) by [Michał Gołębiowski](https://github.com/mzgol)
-* [Browserify](http://browserify.org/): [browserify-ngannotate](https://www.npmjs.org/package/browserify-ngannotate) by [Owen Smith](https://github.com/omsmith)
-* [Brunch](http://brunch.io/): [ng-annotate-uglify-js-brunch](https://www.npmjs.org/package/ng-annotate-uglify-js-brunch) by [Kagami Hiiragi](https://github.com/Kagami)
-* [Gulp](http://gulpjs.com/): [gulp-ng-annotate](https://www.npmjs.org/package/gulp-ng-annotate/) by [Kagami Hiiragi](https://github.com/Kagami)
-* [Broccoli](https://github.com/broccolijs/broccoli): [broccoli-ng-annotate](https://www.npmjs.org/package/broccoli-ng-annotate) by [Gilad Peleg](https://github.com/pgilad)
-* [Rails asset pipeline](http://guides.rubyonrails.org/asset_pipeline.html): [ngannotate-rails](https://rubygems.org/gems/ngannotate-rails) by [Kari Ikonen](https://github.com/kikonen)
-* [Grails asset pipeline](https://github.com/bertramdev/asset-pipeline): [angular-annotate-asset-pipeline](https://github.com/craigburke/angular-annotate-asset-pipeline) by [Craig Burke](https://github.com/craigburke)
-* [Webpack](http://webpack.github.io/): [ng-annotate-webpack-plugin](https://www.npmjs.org/package/ng-annotate-webpack-plugin) by [Chris Liechty](https://github.com/cliechty), [ng-annotate-loader](https://www.npmjs.org/package/ng-annotate-loader) by [Andrey Skladchikov](https://github.com/huston007)
-* [Middleman](http://middlemanapp.com/): [middleman-ngannotate](http://rubygems.org/gems/middleman-ngannotate) by [Michael Siebert](https://github.com/siebertm)
-* [ENB](http://enb-make.info/) (Russian): [enb-ng-techs](https://www.npmjs.org/package/enb-ng-techs#ng-annotate) by [Alexey Gurianov](https://github.com/guria)
-
-
-## Changes
-See [CHANGES.md](CHANGES.md).
-
-
-## Build and test
-ng-annotate is written in ES6 constlet style and uses [defs.js](https://github.com/olov/defs)
-to transpile to ES5. See [BUILD.md](BUILD.md) for build and test instructions.
-
-
-## Issues and contributions
-Please provide issues in the form of input, expected output, actual output. Include 
-the version of ng-annotate and node that you are using. With pull requests, please 
-include changes to the tests as well (tests/original.js, tests/with_annotations.js).
 
 
 ## License
 `MIT`, see [LICENSE](LICENSE) file.
 
-ng-annotate is written by [Olov Lassus](https://github.com/olov) with the kind help by
+This project is a fork of ng-annotate, which  was written by [Olov Lassus](https://github.com/olov) with the kind help by
 [contributors](https://github.com/olov/ng-annotate/graphs/contributors).
 [Follow @olov](https://twitter.com/olov) on Twitter for updates about ng-annotate.
