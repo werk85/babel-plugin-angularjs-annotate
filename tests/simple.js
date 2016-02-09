@@ -271,15 +271,301 @@ module.exports = {
       }]);
     }
   },
-  // {
-  //   name: "",
-  //   input: function(){
+  {
+    name: "Simple chaining",
+    input: function(){
+      myMod.directive("foo", function($a, $b) {
+          a;
+      }).factory("foo", function() {
+              b;
+          }).config(function($c) {
+              c;
+          }).filter("foo", function($d, $e) {
+              d;
+          }).animation("foo", function($f, $g) {
+              e;
+          }).component("foo", {controller: function($scope, $timeout) {
+              i;
+          }}).invoke("foo", function($f, $g) {
+              f;
+          }).decorator("foo", function($f, $g) {
+              g;
+          }).store("foo", function($f, $g) {
+              h;
+          });
+    },
+    expected: function(){
+      myMod.directive("foo", ["$a", "$b", function($a, $b) {
+          a;
+      }]).factory("foo", function() {
+              b;
+          }).config(["$c", function($c) {
+              c;
+          }]).filter("foo", ["$d", "$e", function($d, $e) {
+              d;
+          }]).animation("foo", ["$f", "$g", function($f, $g) {
+              e;
+          }]).component("foo", {controller: ["$scope", "$timeout", function($scope, $timeout) {
+              i;
+          }]}).invoke("foo", ["$f", "$g", function($f, $g) {
+              f;
+          }]).decorator("foo", ["$f", "$g", function($f, $g) {
+              g;
+          }]).store("foo", ["$f", "$g", function($f, $g) {
+              h;
+          }]);
+    }
+  },
+  {
+    name: "Less simple chaining",
+    input: function(){
+      angular.module("MyMod").directive("foo", function($a, $b) {
+          a;
+      }).provider("foo", function() {
+              return {
+                  $get: function($scope, $timeout) {
+                      bar;
+                  }};
+          }).value("foo", "bar")
+          .constant("foo", "bar")
+          .bootstrap(element, [], {})
+          .factory("foo", function() {
+              b;
+          }).config(function($c) {
+              c;
+          }).filter("foo", function($d, $e) {
+              d;
+          }).animation("foo", function($f, $g) {
+              e;
+          }).component("foo", {controller: function($scope, $timeout) {
+              i;
+          }}).invoke("foo", function($h, $i) {
+              f;
+          }).decorator("foo", function($h, $i) {
+              g;
+          }).store("foo", function($f, $g) {
+              h;
+          });
+    },
+    expected: function(){
+      angular.module("MyMod").directive("foo", ["$a", "$b", function($a, $b) {
+          a;
+      }]).provider("foo", function() {
+              return {
+                  $get: ["$scope", "$timeout", function($scope, $timeout) {
+                      bar;
+                  }]};
+          }).value("foo", "bar")
+          .constant("foo", "bar")
+          .bootstrap(element, [], {})
+          .factory("foo", function() {
+              b;
+          }).config(["$c", function($c) {
+              c;
+          }]).filter("foo", ["$d", "$e", function($d, $e) {
+              d;
+          }]).animation("foo", ["$f", "$g", function($f, $g) {
+              e;
+          }]).component("foo", {controller: ["$scope", "$timeout", function($scope, $timeout) {
+              i;
+          }]}).invoke("foo", ["$h", "$i", function($h, $i) {
+              f;
+          }]).decorator("foo", ["$h", "$i", function($h, $i) {
+              g;
+          }]).store("foo", ["$f", "$g", function($f, $g) {
+              h;
+          }]);
+    }
+  },
+  {
+    name: "$provide",
+    input: function(){
+      angular.module("myMod").controller("foo", function() {
+          $provide.decorator("foo", function($scope) {});
+          $provide.service("foo", function($scope) {});
+          $provide.factory("foo", function($scope) {});
+          //$provide.provider
+          $provide.provider("foo", function($scope) {
+              this.$get = function($scope) {};
+              return { $get: function($scope, $timeout) {}};
+          });
+          $provide.provider("foo", {
+              $get: function($scope, $timeout) {}
+          });
+      });
+    },
+    expected: function(){
+      angular.module("myMod").controller("foo", function() {
+          $provide.decorator("foo", ["$scope", function($scope) {}]);
+          $provide.service("foo", ["$scope", function($scope) {}]);
+          $provide.factory("foo", ["$scope", function($scope) {}]);
+          //$provide.provider
+          $provide.provider("foo", ["$scope", function($scope) {
+              this.$get = ["$scope", function($scope) {}];
+              return { $get: ["$scope", "$timeout", function($scope, $timeout) {}]};
+          }]);
+          $provide.provider("foo", {
+              $get: ["$scope", "$timeout", function($scope, $timeout) {}]
+          });
+      });
+    }
+  },
+  {
+    name: "negative $provide",
+    input: function(){
+      function notInContext() {
+          $provide.decorator("foo", function($scope) {});
+          $provide.service("foo", function($scope) {});
+          $provide.factory("foo", function($scope) {});
+          $provide.provider("foo", function($scope) {
+              this.$get = function($scope) {};
+              return { $get: function($scope, $timeout) {}};
+          });
+          $provide.provider("foo", {
+              $get: function($scope, $timeout) {}
+          });
+      }
+    },
+    expected: function(){
+      function notInContext() {
+          $provide.decorator("foo", function($scope) {});
+          $provide.service("foo", function($scope) {});
+          $provide.factory("foo", function($scope) {});
+          $provide.provider("foo", function($scope) {
+              this.$get = function($scope) {};
+              return { $get: function($scope, $timeout) {}};
+          });
+          $provide.provider("foo", {
+              $get: function($scope, $timeout) {}
+          });
+      }
+    }
+  },
+  {
+    name: "ControllerProvider",
+    input: function(){
+      angular.module("myMod").controller("foo", function() {
+          $controllerProvider.register("foo", function($scope) {});
+      });
+      function notInContext() {
+          $controllerProvider.register("foo", function($scope) {});
+      }
+    },
+    expected: function(){
+      angular.module("myMod").controller("foo", function() {
+          $controllerProvider.register("foo", ["$scope", function($scope) {}]);
+      });
+      function notInContext() {
+          $controllerProvider.register("foo", function($scope) {});
+      }
+    }
+  },
+  {
+    name: "directive return object is only valid inside directive",
+    input: function(){
+      myMod.service("donttouch", function() {
+          return {
+              controller: function($scope, $timeout) {
+                  bar;
+              }
+          }
+      });
 
-  //   },
-  //   expected: function(){
+      myMod.directive("donttouch", function() {
+          foo.decorator("me", function($scope) {
+          });
+      });
+    },
+    expected: function(){
+      myMod.service("donttouch", function() {
+          return {
+              controller: function($scope, $timeout) {
+                  bar;
+              }
+          }
+      });
 
-  //   }
-  // },
+      myMod.directive("donttouch", function() {
+          foo.decorator("me", ["$scope", function($scope) {
+          }]);
+      });
+    }
+  },
+  {
+    name: "IIFE-jumping with reference support",
+    input: function(){
+      var myCtrl = (function () {
+          return function($scope) {
+          };
+      })();
+      angular.module("MyMod").controller("MyCtrl", myCtrl);
+    },
+    expected: function(){
+      var myCtrl = (function () {
+          return function($scope) {
+          };
+      })();
+      myCtrl.$inject = ["$scope"];
+      angular.module("MyMod").controller("MyCtrl", myCtrl);
+    }
+  },
+  {
+    name: "advanced IIFE-jumping (with reference support)",
+    input: function(){
+      var myCtrl10 = (function() {
+          "use strict";
+          // the return statement can appear anywhere on the functions topmost level,
+          // including before the myCtrl function definition
+          return myCtrl;
+          function myCtrl($scope) {
+              foo;
+          }
+          post;
+      })();
+      angular.module("MyMod").controller("MyCtrl", myCtrl10);
+    },
+    expected: function(){
+      var myCtrl10 = (function() {
+          "use strict";
+          // the return statement can appear anywhere on the functions topmost level,
+          // including before the myCtrl function definition
+          myCtrl.$inject = ["$scope"];
+          return myCtrl;
+          function myCtrl($scope) {
+              foo;
+          }
+          post;
+      })();
+      angular.module("MyMod").controller("MyCtrl", myCtrl10);
+    }
+  },
+  {
+    name: "",
+    input: function(){
+
+    },
+    expected: function(){
+
+    }
+  },
+  {
+    name: "",
+    input: function(){
+
+    },
+    expected: function(){
+
+    }
+  },
+  {
+    name: "",
+    input: function(){
+
+    },
+    expected: function(){
+
+    }
+  },
 
   ]
 };

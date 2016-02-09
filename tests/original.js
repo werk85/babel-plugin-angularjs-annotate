@@ -133,9 +133,7 @@ myMod.provider("foo", {
     }
 });
 
-myMod.provider("foo", function(x) {
-    this.$get = function(a,b) {};
-});
+C
 
 myMod.provider("foo", extprov);
 function extprov(x) {

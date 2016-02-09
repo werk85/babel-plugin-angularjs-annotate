@@ -187,15 +187,33 @@ module.exports = {
       }
     }
   },
-  // {
-  //   name: "",
-  //   input: function(){
-
-  //   },
-  //   expected: function(){
-
-  //   }
-  // },
+  {
+    name: "$get is only valid inside a provider",
+    input: function(){
+      // $get is only valid inside provider
+      myMod.service("donttouch", function() {
+          this.$get = function(me) {
+          };
+      });
+      myMod.service("donttouch", mefn);
+      function mefn() {
+          this.$get = function(me) {
+          };
+      }
+    },
+    expected: function(){
+      // $get is only valid inside provider
+      myMod.service("donttouch", function() {
+          this.$get = function(me) {
+          };
+      });
+      myMod.service("donttouch", mefn);
+      function mefn() {
+          this.$get = function(me) {
+          };
+      }
+    }
+  },
 
   ]
 };
