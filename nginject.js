@@ -26,6 +26,17 @@ function inspectCallExpression(path, ctx) {
         const block = (name === "ngNoInject");
         addSuspect(path.get("arguments")[0], ctx, block);
     }
+
+    path.get("arguments").forEach(arg => {
+      let annotation = getAnnotation(arg.node);
+      if(!t.isIdentifier(arg) || annotation === null){
+        return;
+      }
+      let binding = path.scope.getBinding(arg.node.name);
+      if(binding){
+        addSuspect(binding.path, ctx, !annotation);
+      }
+    });
 }
 
 const ngAnnotatePrologueDirectives = ["ngInject", "ngNoInject"];
@@ -45,7 +56,7 @@ function inspectFunction(path, ctx) {
       }
     }
 
-    const str = matchPrologueDirectives(ngAnnotatePrologueDirectives, node);
+    const str = matchPrologueDirectives(ngAnnotatePrologueDirectives, path);
     if (!str) {
         return;
     }
@@ -86,7 +97,7 @@ function inspectFunction(path, ctx) {
     //     "ngInject"
     // }]);
     const maybeArrayExpression = path.parent;
-    if (ctx.isAnnotatedArray(maybeArrayExpression)) {
+    if (isAnnotatedArray(maybeArrayExpression)) {
         addSuspect(path.parentPath, ctx, block);
     } else {
         addSuspect(path, ctx, block);
@@ -113,7 +124,7 @@ function getAnnotation(node){
 
     if(value === "@ngInject"){
       return true;
-    } else if (value === "@noNgInject") {
+    } else if (value === "@ngNoInject") {
       return false;
     }
   }
@@ -152,6 +163,10 @@ function inspectObjectExpression(path, ctx) {
   let annotateEverything = getAnnotations(candidates);
   if(annotateEverything !== null){
     addSuspect(path, ctx, !annotateEverything);
+  } else {
+    path.get("properties")
+    .filter(prop => t.isFunctionExpression(prop.node.value))
+    .forEach(prop => inspectComment(prop, ctx));
   }
 
   // path.get("properties").forEach(prop => {
@@ -168,29 +183,16 @@ function inspectObjectExpression(path, ctx) {
   // });
 }
 
+function matchPrologueDirectives(prologueDirectives, path) {
+    const directives = path.node.body.directives || [];
+    let matches = directives.map(dir => dir.value.value)
+      .filter(val => prologueDirectives.indexOf(val) !== -1);
 
-function matchPrologueDirectives(prologueDirectives, node) {
-    const body = node.body.body;
-
-    let found = null;
-    for (let i = 0; i < body.length; i++) {
-        if (!t.isExpressionStatement(body[i])) {
-            break;
-        }
-
-        const expr = body[i].expression;
-        const isStringLiteral = (t.isLiteral(expr) && typeof expr.value === "string");
-        if (!isStringLiteral) {
-            break;
-        }
-
-        if (prologueDirectives.indexOf(expr.value) >= 0) {
-            found = expr.value;
-            break;
-        }
+    if(matches.length){
+      return matches[0];
     }
 
-    return found;
+    return null;
 }
 
 function inspectAssignment(path, ctx){
@@ -202,6 +204,7 @@ function inspectAssignment(path, ctx){
   var candidates = [path.node, node.right];
   if(t.isExpressionStatement(path.parent)){
     candidates.unshift(path.parent);
+    path = path.parentPath;
   }
 
   let annotation = getAnnotations(candidates);
@@ -313,4 +316,26 @@ function nestedObjectValues(path, res) {
     });
 
     return res;
+}
+
+function isAnnotatedArray(node) {
+    if (!t.isArrayExpression(node)) {
+        return false;
+    }
+    const elements = node.elements;
+
+    // last should be a function expression
+    if (elements.length === 0 || !t.isFunctionExpression(last(elements))) {
+        return false;
+    }
+
+    // all but last should be string literals
+    for (let i = 0; i < elements.length - 1; i++) {
+        const n = elements[i];
+        if (!t.isLiteral(n) || !is.string(n.value)) {
+            return false;
+        }
+    }
+
+    return true;
 }

@@ -1,6 +1,5 @@
-import { match, isFunctionExpressionWithArgs, isFunctionDeclarationWithArgs,
-isAnnotatedArray, addModuleContextDependentSuspect, addModuleContextIndependentSuspect,
-stringify, matchResolve, matchProp, last, judgeSuspects, matchDirectiveReturnObject,
+import { match, addModuleContextDependentSuspect, addModuleContextIndependentSuspect,
+judgeSuspects, matchDirectiveReturnObject,
 matchProviderGet } from './ng-annotate-main.js'
 
 import ngInject from './nginject';
@@ -10,7 +9,6 @@ export default function({ types: t }) {
 
     var options = {};
 
-    const quot = options.single_quotes ? "'" : '"';
     const re = (options.regexp ? new RegExp(options.regexp) : /^[a-zA-Z0-9_\$\.\s]+$/);
 
     // suspects is built up with suspect nodes by match.
@@ -25,23 +23,12 @@ export default function({ types: t }) {
     // in blocked will be ignored by judgeSuspects
     const blocked = [];
 
-    // scopeTools.setupScopeAndReferences(ast);
-
     const ctx = {
-        mode: "add",
-        quot: quot,
         re: re,
         suspects: suspects,
         blocked: blocked,
-        isFunctionExpressionWithArgs: isFunctionExpressionWithArgs,
-        isFunctionDeclarationWithArgs: isFunctionDeclarationWithArgs,
-        isAnnotatedArray: isAnnotatedArray,
         addModuleContextDependentSuspect: addModuleContextDependentSuspect,
-        addModuleContextIndependentSuspect: addModuleContextIndependentSuspect,
-        stringify: stringify,
-        matchResolve: matchResolve,
-        matchProp: matchProp,
-        last: last
+        addModuleContextIndependentSuspect: addModuleContextIndependentSuspect
     };
 
   var addTargets = function(targets) {
@@ -117,7 +104,7 @@ export default function({ types: t }) {
             return file.file.code.slice(node.start, node.end);
           };
         },
-        exit(path, file) {
+        exit(path) {
           judgeSuspects(ctx);
         }
       }

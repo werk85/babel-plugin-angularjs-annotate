@@ -31,9 +31,10 @@ module.exports = {
       },
       expected: function(){
         var FooBar = (function (_super) {
+            FooBar.$inject = ["$a", "$b"];
+
             __extends(FooBar, _super);
             /*@ngInject*/
-            FooBar.$inject = ["$a", "$b"];
             function FooBar($a, $b) {
                 _super.call(this);
             }
@@ -45,8 +46,9 @@ module.exports = {
             return FooBar;
         })(Bar);
         var FooBar2 = (function (_super) {
-            __extends(FooBar, _super);
             FooBar.$inject = ["$a", "$b"];
+
+            __extends(FooBar, _super);
             function FooBar($a, $b) {
                 "ngInject";
                 _super.call(this);
@@ -169,8 +171,9 @@ module.exports = {
       },
       expected: function(){
         var MyCtrl = (function() {
-            /*@ngInject*/
             MyCtrl.$inject = ["a"];
+
+            /*@ngInject*/
             function MyCtrl(a) {
             }
 
@@ -179,15 +182,6 @@ module.exports = {
 
         myMod.service("a", MyCtrl);
       }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
+    }
   ]
 }

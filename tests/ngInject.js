@@ -8,8 +8,8 @@ module.exports = {
         };
       },
       expected: function(){
-        var x = /* @ngInject */ ["$scope", function($scope) {
-        }];
+        var x = /* @ngInject */ function($scope) {};
+        x.$inject = ["$scope"]
       }
     },
     {
@@ -20,7 +20,8 @@ module.exports = {
       },
       expected: function(){
         var obj = {};
-        obj.bar = /*@ngInject*/ ["$scope", function($scope) {}];
+        obj.bar = /*@ngInject*/ ["$scope", function($scope) {
+        }];
       }
     },
     {
@@ -256,6 +257,7 @@ module.exports = {
       },
       expected: function(){
         Foo2.$inject = ["$scope"];
+
         function Foo2($scope) {
             "ngInject";
         }
@@ -286,8 +288,8 @@ module.exports = {
       },
       expected: function(){
         var dual1 = function(a) { "ngInject" }, dual2 = function(b) { "ngInject" };
-        dual1.$inject = ["a"];
         dual2.$inject = ["b"];
+        dual1.$inject = ["a"];
       }
     },
     {
@@ -371,54 +373,18 @@ module.exports = {
         }
       },
       expected: function(){
-        MyDirective2.$inject = ["$stateProvider"];
+        MyDirective2.$inject = ['$stateProvider'];
 
         /* @ngInject */
         function MyDirective2($stateProvider) {
             $stateProvider.state('astate', {
                 resolve: {
-                    yoyo: ["ma", function(ma) {
+                    yoyo: ['ma', function(ma) {
                     }],
                 }
             });
         }
       }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
+    }
   ]
 }

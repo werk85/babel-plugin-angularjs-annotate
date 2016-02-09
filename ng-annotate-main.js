@@ -63,25 +63,25 @@ function matchMaterialShowModalOpen(path) {
     return false;
 }
 
-function matchDirectiveReturnObject(pathOrNode) {
-    const node = pathOrNode.node || pathOrNode;
+function matchDirectiveReturnObject(path) {
+    const node = path.node;
 
     // only matches inside directives
     // return { .. controller: function($scope, $timeout), ...}
 
     return limit("directive", t.isReturnStatement(node) &&
         node.argument && t.isObjectExpression(node.argument) &&
-        matchProp("controller", (pathOrNode.get && pathOrNode.get("argument.properties") || node.argument.properties)));
+        matchProp("controller", (path.get && path.get("argument.properties") || node.argument.properties)));
 }
 
-function limit(name, pathOrNode) {
-    const node = (pathOrNode && pathOrNode.node) || pathOrNode;
+function limit(name, path) {
+    const node = (path && path.node) || path;
 
-    if (node && !node.$limitToMethodName) {
-        pathOrNode.$limitToMethodName = name;
+    if (node && !path.$limitToMethodName) {
+        path.$limitToMethodName = name;
         // node.$limitToMethodName = name;
     }
-    return pathOrNode;
+    return path;
 }
 
 function matchProviderGet(path) {
@@ -456,12 +456,6 @@ function renamedString(ctx, originalString) {
     return originalString;
 }
 
-function stringify(ctx, arr, quot) {
-    return "[" + arr.map(function(arg) {
-        return quot + renamedString(ctx, arg.name) + quot;
-    }).join(", ") + "]";
-}
-
 function insertArray(ctx, path) {
     if(!path.node){
         console.warn("Not a path", path, path.loc.start, path.loc.end);
@@ -499,7 +493,6 @@ function renameProviderDeclarationSite(ctx, literalNode, fragments) {
 }
 
 function judgeSuspects(ctx) {
-    const mode = ctx.mode;
     const blocked = ctx.blocked;
 
     const suspects = makeUnique(ctx.suspects, 1);
@@ -529,20 +522,20 @@ function judgeSuspects(ctx) {
         return jumpedAndFollowed;
     }).filter(Boolean), 2);
 
-    finalSuspects.forEach(function(nodeOrPath) {
-        let target = nodeOrPath.node || nodeOrPath;
+    finalSuspects.forEach(function(path) {
+        let target = path.node || path;
         if (target.$chained !== chainedRegular) {
             return;
         }
 
-        if (is.someof(mode, ["add", "rebuild"]) && isFunctionExpressionWithArgs(target)) {
-            insertArray(ctx, nodeOrPath);
+        if (isFunctionExpressionWithArgs(target) && !t.isVariableDeclarator(path.parent)) {
+            insertArray(ctx, path);
         } else if (isGenericProviderName(target)) {
             // console.warn("Generic provider rename disabled");
             // renameProviderDeclarationSite(ctx, target, fragments);
         } else {
             // if it's not array or function-expression, then it's a candidate for foo.$inject = [..]
-            judgeInjectArraySuspect(nodeOrPath, ctx);
+            judgeInjectArraySuspect(path, ctx);
         }
     });
 
@@ -620,9 +613,6 @@ function judgeSuspects(ctx) {
 }
 
 function followReference(path) {
-    if(!path || !path.node){
-        console.warn("not a path");
-    }
     const node = path.node;
     if (!scopeTools.isReference(path)) {
         return null;
@@ -630,7 +620,6 @@ function followReference(path) {
 
     const binding = path.scope.getBinding(node.name);
     if(!binding){
-        console.warn("invalid binding");
         return null;
     }
 
@@ -653,22 +642,6 @@ function followReference(path) {
 
     // other kinds should not be handled ("param", "caught")
 
-    return null;
-}
-
-
-function firstNonPrologueStatement(body) {
-    for (let i = 0; i < body.length; i++) {
-        if (!t.isExpressionStatement(body[i])) {
-            return body[i];
-        }
-
-        const expr = body[i].expression;
-        const isStringLiteral = (t.isLiteral(expr) && typeof expr.value === "string");
-        if (!isStringLiteral) {
-            return body[i];
-        }
-    }
     return null;
 }
 
@@ -713,9 +686,10 @@ function judgeInjectArraySuspect(path, ctx) {
         return;
     }
 
-    // node = jumpOverIife(node);
+    path = jumpOverIife(path);
+    node = path.node;
 
-    if (ctx.isFunctionExpressionWithArgs(node)) {
+    if (isFunctionExpressionWithArgs(node)) {
         // var x = 1, y = function(a,b) {}, z;
 
         if(node.id && node.id.name !== declaratorName){
@@ -725,44 +699,43 @@ function judgeInjectArraySuspect(path, ctx) {
         assert(declaratorName);
         addInjectArrayAfterPath(node.params, opath, declaratorName);
 
-    } else if (ctx.isFunctionDeclarationWithArgs(node)) {
+    } else if (isFunctionDeclarationWithArgs(node)) {
         // /*@ngInject*/ function foo($scope) {}
         addInjectArrayBeforePath(node.params,path,node.id.name);
 
     } else if (t.isExpressionStatement(node) && t.isAssignmentExpression(node.expression) &&
-        ctx.isFunctionExpressionWithArgs(node.expression.right)) {
+        isFunctionExpressionWithArgs(node.expression.right) && !path.get("expression.right").$seen) {
         // /*@ngInject*/ foo.bar[0] = function($scope) {}
-
-        const name = ctx.srcForRange(node.expression.left.range);
-        console.warn("Expression statement unimplemented");
-        // addRemoveInjectArray(
-        //     node.expression.right.params,
-        //     isSemicolonTerminated ? insertPos : {
-        //         pos: node.expression.right.range[1],
-        //         loc: node.expression.right.loc.end
-        //     },
-        //     name);
+        let inject = buildInjectExpression(node.expression.right.params, t.cloneDeep(node.expression.left));
+        path.insertAfter(inject);
 
     } else if (path = followReference(path)) {
         // node was a reference and followed node now is either a
         // FunctionDeclaration or a VariableDeclarator
         // => recurse
 
-        judgeInjectArraySuspect(path, ctx);
+        !path.$seen && judgeInjectArraySuspect(path, ctx);
     }
 
     function buildInjectExpression(params, name){
+        let left = t.isNode(name) ? name : t.identifier(name);
         let paramStrings = params.map(param => t.stringLiteral(param.name));
         let arr = t.arrayExpression(paramStrings); // ["$scope"]
-        let member = t.memberExpression(t.identifier(name), t.identifier("$inject")); // foo.$inject =
+        let member = t.memberExpression(left, t.identifier("$inject")); // foo.$inject =
         return t.expressionStatement(t.assignmentExpression("=", member , arr));
     }
 
     function addInjectArrayBeforePath(params, path, name){
         const binding = path.scope.getBinding(name);
         if(binding && binding.kind === 'hoisted'){
-            let block = t.isProgram(binding.scope.block) ? binding.scope.block : binding.scope.block.body;
-            block.body.unshift(buildInjectExpression(params, name));
+            // let block = t.isProgram(binding.scope.block) ? binding.scope.block : binding.scope.block.body;
+            // block.body.unshift(buildInjectExpression(params, name));
+            let expr = buildInjectExpression(params, name);
+            let block = binding.scope.getBlockParent().path;
+            if(block.isFunction()){
+                block = block.get("body");
+            }
+            block.unshiftContainer("body", [expr]);
         } else {
             path.insertBefore(buildInjectExpression(params, name));
         }
@@ -810,27 +783,6 @@ function addModuleContextIndependentSuspect(target, ctx) {
     ctx.suspects.push(target);
 }
 
-function isAnnotatedArray(node) {
-    if (!t.isArrayExpression(node)) {
-        return false;
-    }
-    const elements = node.elements;
-
-    // last should be a function expression
-    if (elements.length === 0 || !t.isFunctionExpression(last(elements))) {
-        return false;
-    }
-
-    // all but last should be string literals
-    for (let i = 0; i < elements.length - 1; i++) {
-        const n = elements[i];
-        if (!t.isLiteral(n) || !is.string(n.value)) {
-            return false;
-        }
-    }
-
-    return true;
-}
 function isFunctionExpressionWithArgs(node) {
     return t.isFunctionExpression(node) && node.params.length >= 1;
 }
@@ -842,16 +794,8 @@ function isGenericProviderName(node) {
 }
 
 module.exports.match = match;
-module.exports.isFunctionExpressionWithArgs = isFunctionExpressionWithArgs;
-module.exports.isFunctionDeclarationWithArgs = isFunctionDeclarationWithArgs;
-module.exports.isGenericProviderName = isGenericProviderName;
-module.exports.isAnnotatedArray = isAnnotatedArray;
 module.exports.addModuleContextDependentSuspect = addModuleContextDependentSuspect;
 module.exports.addModuleContextIndependentSuspect = addModuleContextIndependentSuspect;
-module.exports.stringify = stringify;
-module.exports.matchResolve = matchResolve;
-module.exports.matchProp = matchProp;
-module.exports.last = last;
 module.exports.judgeSuspects = judgeSuspects;
 module.exports.matchDirectiveReturnObject = matchDirectiveReturnObject;
 module.exports.matchProviderGet = matchProviderGet;

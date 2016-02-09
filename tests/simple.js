@@ -538,34 +538,6 @@ module.exports = {
       })();
       angular.module("MyMod").controller("MyCtrl", myCtrl10);
     }
-  },
-  {
-    name: "",
-    input: function(){
-
-    },
-    expected: function(){
-
-    }
-  },
-  {
-    name: "",
-    input: function(){
-
-    },
-    expected: function(){
-
-    }
-  },
-  {
-    name: "",
-    input: function(){
-
-    },
-    expected: function(){
-
-    }
-  },
-
-  ]
+  }
+ ]
 };

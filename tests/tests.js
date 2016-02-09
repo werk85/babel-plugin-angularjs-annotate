@@ -44,10 +44,10 @@ function runTest(test) {
   var expected = babel.transform(fnBody(test.expected));
 
   if(out.code.trim() != expected.code.trim()){
-    console.warn("  " + test.name + chalk.red.bold(": FAILED."));
+    console.warn("  " + test.name + ": " + chalk.red.bold("FAILED."));
     printDiff(expected.code, out.code)
   } else {
-    console.log("  " + test.name + chalk.green.bold(": PASSED."));
+    console.log("  " + test.name + ": " + chalk.green.bold("PASSED."));
   }
 }
 
@@ -69,9 +69,9 @@ function wrapInNonAngularContext(fn){
 }
 
 function printDiff(expected, actual){
-  var delta = diff.diffLines(actual, expected, {ignoreWhitespace: true});
-  delta.forEach(part => {
-    let msg = indent(part.value, " ", 6);
+  var delta = diff.diffLines(expected, actual, {ignoreWhitespace: true});
+  let msg = delta.map(part => {
+    let msg = indent(part.value.trim(), " ", 6) + '\n';
     if(part.removed){
       msg = chalk.red("-" + msg);
     } else if(part.added) {
@@ -79,10 +79,12 @@ function printDiff(expected, actual){
     } else {
       msg = chalk.gray(msg);
     }
-    console.warn("     " + msg);
-  });
+    return msg;
+  }).reduce((memo, val) => memo + val, "");
+  console.warn(msg);
+
   console.warn(chalk.bold("GOT:") + "\n" + actual);
-  console.warn(chalk.bold("WANTED:") + "\n" + expected);
+  console.warn(chalk.bold("WANTED:") + "\n" + expected + '\n');
 }
 
 suites.forEach(runSuite);

@@ -144,10 +144,9 @@ module.exports = {
       expected: function(){
         MyCtrl2.$inject = ["z"];
 
-        angular.module("MyMod").controller("bar", MyCtrl1);
         function MyCtrl2(z) {
         }
-        funcall(/*@ngInject*/ MyCtrl2); // explicit annotation on reference flows back to definition
+        funcall(/*@ngInject*/ MyCtrl2);
       }
     },
     {
@@ -178,15 +177,6 @@ module.exports = {
             });
         }
       }
-    },
-    {
-      name: "",
-      input: function(){
-
-      },
-      expected: function(){
-
-      }
-    },
+    }
   ]
 }
