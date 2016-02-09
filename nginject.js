@@ -8,7 +8,6 @@ const is = require("simple-is");
 const t = require('babel-types');
 
 module.exports = {
-    inspectComments: inspectComments,
     inspectComment: inspectComment,
     inspectCallExpression: inspectCallExpression,
     inspectFunction: inspectFunction,
@@ -194,25 +193,6 @@ function matchPrologueDirectives(prologueDirectives, node) {
     return found;
 }
 
-function inspectComments(ctx) {
-    const comments = ctx.comments;
-    for (let i = 0; i < comments.length; i++) {
-        const comment = comments[i];
-        const yesPos = comment.value.indexOf("@ngInject");
-        const noPos = (yesPos === -1 ? comment.value.indexOf("@ngNoInject") : -1);
-        if (yesPos === -1 && noPos === -1) {
-            continue;
-        }
-
-        const target = ctx.lut.findNodeFromPos(comment.range[1]);
-        if (!target) {
-            continue;
-        }
-
-        addSuspect(target, ctx, noPos >= 0);
-    }
-}
-
 function inspectAssignment(path, ctx){
   const node = path.node;
   if(!t.isFunctionExpression(node.right)){
@@ -240,7 +220,7 @@ function inspectDeclarator(path, ctx){
   if(t.isVariableDeclaration(path.parent)){
     path = path.parentPath;
   } else {
-    debugger;
+    console.error("not a variable declaration");
   }
 
   let annotation = getAnnotations(candidates);

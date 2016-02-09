@@ -3,21 +3,11 @@
 // Copyright (c) 2013-2016 Olov Lassus <olov.lassus@gmail.com>
 
 "use strict";
-const fmt = require("simple-fmt");
 const is = require("simple-is");
-const alter = require("alter");
-const traverse = require("ordered-ast-traverse");
-let EOL = require("os").EOL;
 const assert = require("assert");
 const ngInject = require("./nginject");
-const generateSourcemap = require("./generate-sourcemap");
-const Lut = require("./lut");
 const scopeTools = require("./scopetools");
-const stringmap = require("stringmap");
-const optionalAngularDashboardFramework = require("./optionals/angular-dashboard-framework");
-const require_acorn_t0 = Date.now();
-const parser = require("acorn").parse;
-const require_acorn_t1 = Date.now();
+// const optionalAngularDashboardFramework = require("./optionals/angular-dashboard-framework");
 const t = require('babel-types');
 
 
@@ -457,7 +447,7 @@ function matchResolve(props) {
         });
     }
     return [];
-};
+}
 
 function renamedString(ctx, originalString) {
     if (ctx.rename) {
@@ -472,70 +462,11 @@ function stringify(ctx, arr, quot) {
     }).join(", ") + "]";
 }
 
-function parseExpressionOfType(str, type) {
-    const node = parser(str).body[0].expression;
-    assert(node.type === type);
-    return node;
-}
-
-// stand-in for not having a jsshaper-style ref's
-function replaceNodeWith(node, newNode) {
-    let done = false;
-    const parent = node.$parent;
-    const keys = Object.keys(parent);
-    keys.forEach(function(key) {
-        if (parent[key] === node) {
-            parent[key] = newNode;
-            done = true;
-        }
-    });
-
-    if (done) {
-        return;
-    }
-
-    // second pass, now check arrays
-    keys.forEach(function(key) {
-        if (Array.isArray(parent[key])) {
-            const arr = parent[key];
-            for (let i = 0; i < arr.length; i++) {
-                if (arr[i] === node) {
-                    arr[i] = newNode;
-                    done = true;
-                }
-            }
-        }
-    });
-
-    assert(done);
-}
-
-function insertArray(ctx, path, fragments, quot) {
+function insertArray(ctx, path) {
     if(!path.node){
         console.warn("Not a path", path, path.loc.start, path.loc.end);
         return;
     }
-
-    // const args = stringify(ctx, functionExpression.params, quot);
-
-    // fragments.push({
-    //     start: functionExpression.range[0],
-    //     end: functionExpression.range[0],
-    //     str: args.slice(0, -1) + ", ",
-    //     loc: {
-    //         start: functionExpression.loc.start,
-    //         end: functionExpression.loc.start
-    //     }
-    // });
-    // fragments.push({
-    //     start: functionExpression.range[1],
-    //     end: functionExpression.range[1],
-    //     str: "]",
-    //     loc: {
-    //         start: functionExpression.loc.end,
-    //         end: functionExpression.loc.end
-    //     }
-    // });
 
     let toParam = path.node.params.map(param => param.name);
     let elems = toParam.map(i => t.stringLiteral(i));
@@ -548,48 +479,6 @@ function insertArray(ctx, path, fragments, quot) {
         )
     );
 
-}
-
-function replaceArray(ctx, array, fragments, quot) {
-    const functionExpression = last(array.elements);
-
-    if (functionExpression.params.length === 0) {
-        return removeArray(array, fragments);
-    }
-
-    const args = stringify(ctx, functionExpression.params, quot);
-    fragments.push({
-        start: array.range[0],
-        end: functionExpression.range[0],
-        str: args.slice(0, -1) + ", ",
-        loc: {
-            start: array.loc.start,
-            end: functionExpression.loc.start
-        }
-    });
-}
-
-function removeArray(array, fragments) {
-    const functionExpression = last(array.elements);
-
-    fragments.push({
-        start: array.range[0],
-        end: functionExpression.range[0],
-        str: "",
-        loc: {
-            start: array.loc.start,
-            end: functionExpression.loc.start
-        }
-    });
-    fragments.push({
-        start: functionExpression.range[1],
-        end: array.range[1],
-        str: "",
-        loc: {
-            start: functionExpression.loc.end,
-            end: array.loc.end
-        }
-    });
 }
 
 function renameProviderDeclarationSite(ctx, literalNode, fragments) {
@@ -611,8 +500,6 @@ function renameProviderDeclarationSite(ctx, literalNode, fragments) {
 
 function judgeSuspects(ctx) {
     const mode = ctx.mode;
-    const fragments = ctx.fragments;
-    const quot = ctx.quot;
     const blocked = ctx.blocked;
 
     const suspects = makeUnique(ctx.suspects, 1);
@@ -645,18 +532,13 @@ function judgeSuspects(ctx) {
     finalSuspects.forEach(function(nodeOrPath) {
         let target = nodeOrPath.node || nodeOrPath;
         if (target.$chained !== chainedRegular) {
-            console.warn("Skipping", nodeOrPath.node.loc.start.line);
             return;
         }
 
-        if (mode === "rebuild" && isAnnotatedArray(target)) {
-            replaceArray(ctx, target, fragments, quot);
-        } else if (mode === "remove" && isAnnotatedArray(target)) {
-            removeArray(target, fragments);
-        } else if (is.someof(mode, ["add", "rebuild"]) && isFunctionExpressionWithArgs(target)) {
-            insertArray(ctx, nodeOrPath, fragments, quot);
+        if (is.someof(mode, ["add", "rebuild"]) && isFunctionExpressionWithArgs(target)) {
+            insertArray(ctx, nodeOrPath);
         } else if (isGenericProviderName(target)) {
-            console.warn("Generic provider rename disabled");
+            // console.warn("Generic provider rename disabled");
             // renameProviderDeclarationSite(ctx, target, fragments);
         } else {
             // if it's not array or function-expression, then it's a candidate for foo.$inject = [..]
@@ -774,25 +656,6 @@ function followReference(path) {
     return null;
 }
 
-// O(srclength) so should only be used for debugging purposes, else replace with lut
-function posToLine(pos, src) {
-    if (pos >= src.length) {
-        pos = src.length - 1;
-    }
-
-    if (pos <= -1) {
-        return -1;
-    }
-
-    let line = 1;
-    for (let i = 0; i < pos; i++) {
-        if (src[i] === "\n") {
-            ++line;
-        }
-    }
-
-    return line;
-}
 
 function firstNonPrologueStatement(body) {
     for (let i = 0; i < body.length; i++) {
@@ -832,11 +695,9 @@ function judgeInjectArraySuspect(path, ctx) {
 
     // onode is a top-level node (inside function block), later verified
     // node is inner match, descent in multiple steps
-    let onode = null;
     let opath = null;
     let declaratorName = null;
     if (t.isVariableDeclarator(node)) {
-        onode = path.parent;
         opath = path.parentPath;
 
         declaratorName = node.id.name;
@@ -844,7 +705,6 @@ function judgeInjectArraySuspect(path, ctx) {
         path = path.get("init");
 
     } else {
-        onode = node;
         opath = path;
     }
 
@@ -891,16 +751,6 @@ function judgeInjectArraySuspect(path, ctx) {
         judgeInjectArraySuspect(path, ctx);
     }
 
-
-    function getIndent(pos) {
-        const src = ctx.src;
-        const lineStart = src.lastIndexOf("\n", pos - 1) + 1;
-        let i = lineStart;
-        for (; src[i] === " " || src[i] === "\t"; i++) {
-        }
-        return src.slice(lineStart, i);
-    }
-
     function buildInjectExpression(params, name){
         let paramStrings = params.map(param => t.stringLiteral(param.name));
         let arr = t.arrayExpression(paramStrings); // ["$scope"]
@@ -928,113 +778,6 @@ function judgeInjectArraySuspect(path, ctx) {
         newNode.trailingComments = trailingComments;
     }
 
-    function addRemoveInjectArray(params, posAfterFunctionDeclaration, name) {
-        // if an existing something.$inject = [..] exists then is will always be recycled when rebuilding
-
-        const indent = getIndent(posAfterFunctionDeclaration.pos);
-
-        let foundSuspectInBody = false;
-        let existingExpressionStatementWithArray = null;
-        let nodeAfterExtends = null;
-        onode.$parent.body.forEach(function(bnode, idx) {
-            if (bnode === onode) {
-                foundSuspectInBody = true;
-            }
-
-            if (hasInjectArray(bnode)) {
-                if (existingExpressionStatementWithArray) {
-                    throw fmt("conflicting inject arrays at line {0} and {1}",
-                        posToLine(existingExpressionStatementWithArray.range[0], ctx.src),
-                        posToLine(bnode.range[0], ctx.src));
-                }
-                existingExpressionStatementWithArray = bnode;
-            }
-
-            let e;
-            if (!nodeAfterExtends && !foundSuspectInBody && t.isExpressionStatement(bnode) && t.isCallExpression(e = bnode.expression) && t.isIdentifier(e.callee) && e.callee.name === "__extends") {
-                const nextStatement = onode.$parent.body[idx + 1];
-                if (nextStatement) {
-                    nodeAfterExtends = nextStatement;
-                }
-            }
-        });
-        assert(foundSuspectInBody);
-        if (t.isFunctionDeclaration(onode)) {
-            if (!nodeAfterExtends) {
-                nodeAfterExtends = firstNonPrologueStatement(onode.$parent.body);
-            }
-            if (nodeAfterExtends && !existingExpressionStatementWithArray) {
-                posAfterFunctionDeclaration = skipPrevNewline(nodeAfterExtends.range[0], nodeAfterExtends.loc.start);
-            }
-        }
-
-        function hasInjectArray(node) {
-            let lvalue;
-            let assignment;
-            return (node && t.isExpressionStatement(node) && t.isAssignmentExpression(assignment = node.expression) &&
-                assignment.operator === "=" &&
-                t.isMemberExpression(lvalue = assignment.left) &&
-                ((lvalue.computed === false && ctx.srcForRange(lvalue.object.range) === name && lvalue.property.name === "$inject") ||
-                    (lvalue.computed === true && ctx.srcForRange(lvalue.object.range) === name && t.isLiteral(lvalue.property) && lvalue.property.value === "$inject")));
-        }
-
-        function skipPrevNewline(pos, loc) {
-            let prevLF = ctx.src.lastIndexOf("\n", pos);
-            if (prevLF === -1) {
-                return { pos: pos, loc: loc };
-            }
-            if (prevLF >= 1 && ctx.src[prevLF - 1] === "\r") {
-                --prevLF;
-            }
-
-            if (/\S/g.test(ctx.src.slice(prevLF, pos - 1))) { // any non-whitespace chars between prev newline and pos?
-                return { pos: pos, loc: loc };
-            }
-
-            return {
-                pos: prevLF,
-                loc: {
-                    line: loc.line - 1,
-                    column: prevLF - ctx.src.lastIndexOf("\n", prevLF) - 1,
-                }
-            };
-        }
-
-        if (ctx.mode === "rebuild" && existingExpressionStatementWithArray) {
-            const strNoWhitespace = fmt("{2}.$inject = {3};", null, null, name, ctx.stringify(ctx, params, ctx.quot));
-            ctx.fragments.push({
-                start: existingExpressionStatementWithArray.range[0],
-                end: existingExpressionStatementWithArray.range[1],
-                str: strNoWhitespace,
-                loc: {
-                    start: existingExpressionStatementWithArray.loc.start,
-                    end: existingExpressionStatementWithArray.loc.end
-                }
-            });
-        } else if (ctx.mode === "remove" && existingExpressionStatementWithArray) {
-            const start = skipPrevNewline(existingExpressionStatementWithArray.range[0], existingExpressionStatementWithArray.loc.start);
-            ctx.fragments.push({
-                start: start.pos,
-                end: existingExpressionStatementWithArray.range[1],
-                str: "",
-                loc: {
-                    start: start.loc,
-                    end: existingExpressionStatementWithArray.loc.end
-                }
-            });
-        } else if (is.someof(ctx.mode, ["add", "rebuild"]) && !existingExpressionStatementWithArray) {
-            const str = fmt("{0}{1}{2}.$inject = {3};", EOL, indent, name, ctx.stringify(ctx, params, ctx.quot));
-            ctx.fragments.push({
-                start: posAfterFunctionDeclaration.pos,
-                end: posAfterFunctionDeclaration.pos,
-                str: str,
-                loc: {
-                    start: posAfterFunctionDeclaration.loc,
-                    end: posAfterFunctionDeclaration.loc
-                }
-            });
-        }
-    }
 }
 
 function jumpOverIife(path) {
@@ -1098,217 +841,6 @@ function isGenericProviderName(node) {
     return t.isLiteral(node) && is.string(node.value);
 }
 
-function uniqifyFragments(fragments) {
-    // must do in-place modification of ctx.fragments because shared reference
-
-    const map = Object.create(null);
-    for (let i = 0; i < fragments.length; i++) {
-        const frag = fragments[i];
-        const str = JSON.stringify({start: frag.start, end: frag.end, str: frag.str});
-        if (map[str]) {
-            fragments.splice(i, 1); // remove
-            i--;
-        } else {
-            map[str] = true;
-        }
-    }
-}
-
-const allOptionals = {
-    "angular-dashboard-framework": optionalAngularDashboardFramework,
-};
-
-module.exports = function ngAnnotate(src, options) {
-    if (options.list) {
-        return {
-            list: Object.keys(allOptionals).sort(),
-        };
-    }
-
-    const mode = (options.add && options.remove ? "rebuild" :
-        options.remove ? "remove" :
-            options.add ? "add" : null);
-
-    if (!mode) {
-        return {src: src};
-    }
-
-    const quot = options.single_quotes ? "'" : '"';
-    const re = (options.regexp ? new RegExp(options.regexp) : /^[a-zA-Z0-9_\$\.\s]+$/);
-    const rename = new stringmap();
-    if (options.rename) {
-        options.rename.forEach(function(value) {
-            rename.set(value.from, value.to);
-        });
-    }
-    let ast;
-    const stats = {};
-
-    // detect newline and override os.EOL
-    const lf = src.lastIndexOf("\n");
-    if (lf >= 1) {
-        EOL = (src[lf - 1] === "\r" ? "\r\n" : "\n");
-    }
-
-    // [{type: "Block"|"Line", value: str, range: [from,to]}, ..]
-    let comments = [];
-
-    try {
-        stats.parser_require_t0 = require_acorn_t0;
-        stats.parser_require_t1 = require_acorn_t1;
-        stats.parser_parse_t0 = Date.now();
-        // acorn
-        ast = parser(src, {
-            ecmaVersion: 6,
-            allowReserved: true,
-            locations: true,
-            ranges: true,
-            onComment: comments,
-        });
-        stats.parser_parse_t1 = Date.now();
-    } catch(e) {
-        return {
-            errors: ["error: couldn't process source due to parse error", e.message],
-        };
-    }
-
-    // append a dummy-node to ast so that lut.findNodeFromPos(lastPos) returns something
-    ast.body.push({
-        type: "DebuggerStatement",
-        range: [ast.range[1], ast.range[1]],
-        loc: {
-            start: ast.loc.end,
-            end: ast.loc.end
-        }
-    });
-
-    // all source modifications are built up as operations in the
-    // fragments array, later sent to alter in one shot
-    const fragments = [];
-
-    // suspects is built up with suspect nodes by match.
-    // A suspect node will get annotations added / removed if it
-    // fulfills the arrayexpression or functionexpression look,
-    // and if it is in the correct context (inside an angular
-    // module definition)
-    const suspects = [];
-
-    // blocked is an array of blocked suspects. Any target node
-    // (final, i.e. IIFE-jumped, reference-followed and such) included
-    // in blocked will be ignored by judgeSuspects
-    const blocked = [];
-
-    // Position information for all nodes in the AST,
-    // used for sourcemap generation
-    const nodePositions = [];
-
-    const lut = new Lut(ast, src);
-
-    scopeTools.setupScopeAndReferences(ast);
-
-    const ctx = {
-        mode: mode,
-        quot: quot,
-        src: src,
-        srcForRange: function(range) {
-            return src.slice(range[0], range[1]);
-        },
-        re: re,
-        rename: rename,
-        comments: comments,
-        fragments: fragments,
-        suspects: suspects,
-        blocked: blocked,
-        lut: lut,
-        isFunctionExpressionWithArgs: isFunctionExpressionWithArgs,
-        isFunctionDeclarationWithArgs: isFunctionDeclarationWithArgs,
-        isAnnotatedArray: isAnnotatedArray,
-        addModuleContextDependentSuspect: addModuleContextDependentSuspect,
-        addModuleContextIndependentSuspect: addModuleContextIndependentSuspect,
-        stringify: stringify,
-        nodePositions: nodePositions,
-        matchResolve: matchResolve,
-        matchProp: matchProp,
-        last: last,
-    };
-
-    // setup optionals
-    const optionals = options.enable || [];
-    for (let i = 0; i < optionals.length; i++) {
-        const optional = String(optionals[i]);
-        if (!allOptionals.hasOwnProperty(optional)) {
-            return {
-                errors: ["error: found no optional named " + optional],
-            };
-        }
-    }
-    const optionalsPlugins = optionals.map(function(optional) {
-        return allOptionals[optional];
-    });
-
-    const plugins = [].concat(optionalsPlugins, options.plugin || []);
-
-    function matchPlugins(node, isMethodCall) {
-        for (let i = 0; i < plugins.length; i++) {
-            const res = plugins[i].match(node, isMethodCall);
-            if (res) {
-                return res;
-            }
-        }
-        return false;
-    }
-    const matchPluginsOrNull = (plugins.length === 0 ? null : matchPlugins);
-
-    ngInject.inspectComments(ctx);
-    plugins.forEach(function(plugin) {
-        plugin.init(ctx);
-    });
-
-    traverse(ast, {pre: function(node) {
-        ngInject.inspectNode(node, ctx);
-
-    }, post: function(node) {
-        ctx.nodePositions.push(node.loc.start);
-        let targets = match(node, ctx, matchPluginsOrNull);
-        if (!targets) {
-            return;
-        }
-        if (!is.array(targets)) {
-            targets = [targets];
-        }
-
-        for (let i = 0; i < targets.length; i++) {
-            addModuleContextDependentSuspect(targets[i], ctx);
-        }
-    }});
-
-    try {
-        judgeSuspects(ctx);
-    } catch(e) {
-        return {
-            errors: ["error: " + e],
-        };
-    }
-
-    uniqifyFragments(ctx.fragments);
-
-    const out = alter(src, fragments);
-    const result = {
-        src: out,
-        _stats: stats,
-    };
-
-    if (options.map) {
-        if (typeof(options.map) !== 'object')
-            options.map = {};
-        stats.sourcemap_t0 = Date.now();
-        generateSourcemap(result, src, nodePositions, fragments, options.map);
-        stats.sourcemap_t1 = Date.now();
-    }
-
-    return result;
-}
-
 module.exports.match = match;
 module.exports.isFunctionExpressionWithArgs = isFunctionExpressionWithArgs;
 module.exports.isFunctionDeclarationWithArgs = isFunctionDeclarationWithArgs;
@@ -1320,7 +852,6 @@ module.exports.stringify = stringify;
 module.exports.matchResolve = matchResolve;
 module.exports.matchProp = matchProp;
 module.exports.last = last;
-module.exports.allOptionals = allOptionals;
 module.exports.judgeSuspects = judgeSuspects;
 module.exports.matchDirectiveReturnObject = matchDirectiveReturnObject;
 module.exports.matchProviderGet = matchProviderGet;
