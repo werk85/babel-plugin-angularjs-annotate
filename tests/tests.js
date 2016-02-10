@@ -4,6 +4,7 @@ const babel = require('babel-core');
 const diff = require('diff');
 const chalk = require('chalk');
 const indent = require('indent-string');
+const tape = require('tape').test;
 
 let suites = [
   require('./simple'),
@@ -17,7 +18,7 @@ let suites = [
 ];
 
 function runSuite(suite){
-  console.log(chalk.bold("Running: " + suite.name));
+  // console.log(chalk.bold("Running: " + suite.name));
   runTests(suite.tests);
 }
 
@@ -40,15 +41,20 @@ function runTests(tests){
 }
 
 function runTest(test) {
-  var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
-  var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
+  tape(function(t){
+    var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
+    var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
 
-  if(out.code.trim() != expected.code.trim()){
-    console.warn("  " + test.name + ": " + chalk.red.bold("FAILED."));
-    printDiff(expected.code, out.code)
-  } else {
-    console.log("  " + test.name + ": " + chalk.green.bold("PASSED."));
-  }
+    t.equals(out.code.trim(), expected.code.trim(), test.name);
+    t.end();
+  });
+
+  // if(out.code.trim() != expected.code.trim()){
+  //   console.warn("  " + test.name + ": " + chalk.red.bold("FAILED."));
+  //   printDiff(expected.code, out.code)
+  // } else {
+  //   console.log("  " + test.name + ": " + chalk.green.bold("PASSED."));
+  // }
 }
 
 
