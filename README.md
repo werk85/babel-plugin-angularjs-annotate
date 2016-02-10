@@ -21,9 +21,10 @@ far from Esprima to make that goal realistic.  (I would love to be proven wrong 
 
 That being said, this is my short-term todo list:
 
-* Support the majority of invocations/annotations currently performed by ng-annotate
-* Split up ng-annotate's test suite to be more granular and tolerant of some of babel's other transforms.
-* Actually pass those tests.
+✓ Support the majority of invocations/annotations currently performed by ng-annotate
+✓ Split up ng-annotate's test suite to be more granular and tolerant of some of babel's other transforms.
+✓ Actually pass those tests.
+* Pass tests in conjunction with the ES2015 preset.
 * Cleanup.  Remove vestigial functionality from the upstream project.
 * Support a (very) limited set of ES6-friendly annotation patterns.  
 * Publish to npm, make a release, etc.
@@ -31,18 +32,12 @@ That being said, this is my short-term todo list:
 
 ## Don't Say I Didn't Warn You
 
-To test this mess of an experiment, compile the ES6 sources into something that Node can run:
-
-```
-babel babel-ng-annotate.js -o babel-ng-annotate-harmony.js
-```
-
-Create a .babelrc file for your sources 
+To test this mess of an experiment, create a .babelrc file for your sources 
 
 ```json
 {
   "presets": ["es2015"],
-  "plugins": ["path/to/babel-ng-annotate-harmony"]
+  "plugins": ["path/to/babel-ng-annotate"]
 }
 
 ```
@@ -53,6 +48,11 @@ And try it out:
 babel original.js
 ```
 
+### To run tests:
+
+```
+node tests/tests.js
+```
 
 
 ## License

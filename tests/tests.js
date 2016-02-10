@@ -40,8 +40,8 @@ function runTests(tests){
 }
 
 function runTest(test) {
-  var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate-harmony" });
-  var expected = babel.transform(fnBody(test.expected));
+  var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
+  var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
 
   if(out.code.trim() != expected.code.trim()){
     console.warn("  " + test.name + ": " + chalk.red.bold("FAILED."));
@@ -83,8 +83,8 @@ function printDiff(expected, actual){
   }).reduce((memo, val) => memo + val, "");
   console.warn(msg);
 
-  console.warn(chalk.bold("GOT:") + "\n" + actual);
-  console.warn(chalk.bold("WANTED:") + "\n" + expected + '\n');
+  // console.warn(chalk.bold("GOT:") + "\n" + actual);
+  // console.warn(chalk.bold("WANTED:") + "\n" + expected + '\n');
 }
 
 suites.forEach(runSuite);

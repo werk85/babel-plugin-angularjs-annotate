@@ -1,4 +1,3 @@
 {
-  "presets": ["es2015"],
-  "plugins": ["../babel-ng-annotate-harmony"]
+  "plugins": ["../babel-ng-annotate"]
 }

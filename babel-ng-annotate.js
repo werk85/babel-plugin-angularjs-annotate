@@ -1,11 +1,18 @@
-import { match, addModuleContextDependentSuspect, addModuleContextIndependentSuspect,
-judgeSuspects, matchDirectiveReturnObject,
-matchProviderGet } from './ng-annotate-main.js'
+'use strict';
 
-import ngInject from './nginject';
-import is from 'simple-is';
+var ngAnnotate = require('./ng-annotate-main');
+const ngInject = require('./nginject');
+const is = require('simple-is');
 
-export default function({ types: t }) {
+const match = ngAnnotate.match;
+const addModuleContextDependentSuspect = ngAnnotate.addModuleContextDependentSuspect;
+const addModuleContextIndependentSuspect = ngAnnotate.addModuleContextIndependentSuspect;
+const judgeSuspects = ngAnnotate.judgeSuspects;
+const matchDirectiveReturnObject = ngAnnotate.matchDirectiveReturnObject;
+const matchProviderGet = ngAnnotate.matchProviderGet;
+
+
+module.exports = function() {
 
     var options = {};
 
@@ -104,7 +111,7 @@ export default function({ types: t }) {
             return file.file.code.slice(node.start, node.end);
           };
         },
-        exit(path) {
+        exit() {
           judgeSuspects(ctx);
         }
       }

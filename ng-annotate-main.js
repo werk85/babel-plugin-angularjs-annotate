@@ -475,6 +475,7 @@ function insertArray(ctx, path) {
 
 }
 
+// TODO: Is this necessary?
 function renameProviderDeclarationSite(ctx, literalNode, fragments) {
     fragments.push({
         start: literalNode.range[0] + 1,
