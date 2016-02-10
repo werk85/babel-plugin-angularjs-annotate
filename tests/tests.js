@@ -42,8 +42,13 @@ function runTests(tests){
 
 function runTest(test) {
   tape(function(t){
-    var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
-    var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
+    // es2015 tansforms disabled because circleCI's node/npm won't let us hack out the function name transformation
+    // var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
+    // var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
+
+    var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate" });
+    var expected = babel.transform(fnBody(test.expected), { plugins: [] });
+
 
     t.equals(out.code.trim(), expected.code.trim(), test.name);
     t.end();
