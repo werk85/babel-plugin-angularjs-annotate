@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "babel": "^6.5.1",
+    "babel-plugin-transform-es2015-function-name": "^6.5.0",
     "optimist": "~0.6.1",
     "simple-fmt": "~0.1.0",
     "simple-is": "~0.2.0",
