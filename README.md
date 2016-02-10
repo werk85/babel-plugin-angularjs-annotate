@@ -1,5 +1,7 @@
 # babel-plugin-angularjs-annotate
 
+[![Circle CI](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate)
+
 Experimental fork of [ng-annotate](https://github.com/olov/ng-annotate).  
 
 Work in progress.  **Do not use this for anything serious.**  My code is a mess, and this does not
