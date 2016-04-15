@@ -5,6 +5,7 @@ const diff = require('diff');
 const chalk = require('chalk');
 const indent = require('indent-string');
 const tape = require('tape').test;
+const path = require('path');
 
 let suites = [
   require('./simple'),
@@ -46,8 +47,10 @@ function runTest(test) {
     // var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
     // var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
 
-    var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate" });
-    var expected = babel.transform(fnBody(test.expected), { plugins: [] });
+    var resolve = (file) => path.resolve(__dirname, file);
+
+    var out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:["./es2015-modified"].map(resolve) });
+    var expected = babel.transform(fnBody(test.expected), { plugins: [], presets:["./es2015-modified"].map(resolve) });
 
 
     t.equals(out.code.trim(), expected.code.trim(), test.name);

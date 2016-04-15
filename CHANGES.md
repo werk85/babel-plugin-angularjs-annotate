@@ -1,3 +1,10 @@
+# babel-plugin-angularjs-annotate changelog
+
+## v0.1.0 2016-04-15
+ * Initial release
+
+# ng-annotate changelog
+
 ## v1.2.1 2016-01-10
  * bugfix case where $inject arrays were incorrectly hoisted
  * angular-dashboard-framework optional: match apply
