@@ -1,6 +1,6 @@
 # babel-plugin-angularjs-annotate
 
-[![Circle CI](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate)
+[![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate)
 
 Experimental fork of [ng-annotate](https://github.com/olov/ng-annotate).
 
