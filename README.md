@@ -1,6 +1,6 @@
 # babel-plugin-angularjs-annotate
 
-[![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate)
+[![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate) [![npm version](https://badge.fury.io/js/babel-plugin-angularjs-annotate.svg)](https://badge.fury.io/js/babel-plugin-angularjs-annotate)
 
 Experimental fork of [ng-annotate](https://github.com/olov/ng-annotate).  Adds Angular 1.x DI annotations to ES5/ES6 code being processed by babel, with support for explicit annotations (`/* @ngInject */`) and implicit annotations of idiomatic Angular code.
 
