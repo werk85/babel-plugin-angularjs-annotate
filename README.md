@@ -75,7 +75,7 @@ class svc {
 }
 ```
 
-## Goals & Tasks
+## Notes & Philosophy
 
 This project/experiment does _not_ seek to replace ng-annotate.  However, it does seek to provide similar 
 functionality for Angular 1.x developers who are already using Babel and/or writing code in ES6.
@@ -87,16 +87,6 @@ and indentations like ng-annotate does, and this project does not seek to replic
 Initially, I had hoped to make very few modifications to the upstream sources, in the hopes of eventually
 merging babel support directly into ng-annotate.  Unfortunately, Babylon appears to have diverged too 
 far from Acorn to make that goal realistic.  (I would love to be wrong here, and would welcome contributions that close the gap between the two projects!)
-
-That being said, this is my short-term todo list:
-
-* ✓ Support the majority of invocations/annotations currently performed by ng-annotate
-* ✓ Split up ng-annotate's test suite to be more granular and tolerant of some of babel's other transforms.
-* ✓ Actually pass those tests.
-* ✓ Pass tests in conjunction with the ES2015 preset. _(almost)_
-* ✓ Cleanup.  Remove vestigial functionality from the upstream project.
-* ✓ Support a limited set of ES6-friendly annotation patterns.  
-* ✓ Publish to npm, make a release, etc.
 
 ### To run tests:
 
