@@ -1,5 +1,10 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.2.0 2016-06-21
+ * Add support for ES6 class annotations
+ * Add support for exported ES6 classes and functions
+ * Run all tests against transpiled _and_ non-transpiled code.
+
 ## v0.1.0 2016-04-15
  * Initial release
 

@@ -75,6 +75,13 @@ class svc {
 }
 ```
 
+Exported functions and classes may be annotated.  Exported functions must have names:
+
+```js
+/* @ngInject */
+export default function svc(dep1){}
+```
+
 ## Notes & Philosophy
 
 This project/experiment does _not_ seek to replace ng-annotate.  However, it does seek to provide similar 
