@@ -18,8 +18,7 @@
 
 const es2015 = require('babel-preset-es2015');
 const bad = [
-    require('babel-plugin-transform-es2015-function-name'),
-    require('babel-plugin-transform-es2015-modules-commonjs')
+    require('babel-plugin-transform-es2015-function-name')
 ];
 
 let plugins = es2015.plugins.filter(plugin => bad.indexOf(plugin) === -1);

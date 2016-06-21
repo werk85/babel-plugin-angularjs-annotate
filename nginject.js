@@ -15,7 +15,8 @@ module.exports = {
     inspectAssignment: inspectAssignment,
     inspectDeclarator: inspectDeclarator,
     inspectClassDeclaration: inspectClassDeclaration,
-    inspectClassMethod: inspectClassMethod
+    inspectClassMethod: inspectClassMethod,
+    inspectExportDeclaration: inspectExportDeclaration
 };
 
 function inspectCallExpression(path, ctx) {
@@ -265,6 +266,14 @@ function inspectClassMethod(path, ctx){
       return;
     }
   }
+}
+
+function inspectExportDeclaration(path, ctx){
+  let annotation = getAnnotation(path.node);
+  if(annotation === null){
+    return;
+  }
+  addSuspect(path.get('declaration'), ctx, !annotation);
 }
 
 function isStringArray(node) {

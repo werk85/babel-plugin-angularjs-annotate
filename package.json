@@ -10,7 +10,6 @@
   "dependencies": {
     "babel": "^6.5.1",
     "babel-plugin-transform-es2015-function-name": "^6.9.0",
-    "babel-plugin-transform-es2015-modules-commonjs": "^6.9.0",
     "simple-is": "~0.2.0"
   },
   "devDependencies": {

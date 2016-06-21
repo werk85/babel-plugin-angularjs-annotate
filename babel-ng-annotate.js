@@ -111,6 +111,11 @@ module.exports = function() {
           addTargets(targets);
         }
       },
+      ExportDeclaration: {
+        enter(path) {
+          ngInject.inspectExportDeclaration(path, ctx);
+        }
+      },
       Program: {
         enter(path, file) {
           ctx.suspects = [];
