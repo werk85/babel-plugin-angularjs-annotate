@@ -688,6 +688,10 @@ function judgeInjectArraySuspect(path, ctx) {
         opath = path;
     }
 
+    if(t.isExportDeclaration(opath.parent)){
+        opath = opath.parentPath;
+    }
+
     // suspect must be inside of a block or at the top-level (i.e. inside of node.$parent.body[])
     if (!node || !opath.parent || (!t.isProgram(opath.parent) && !t.isBlockStatement(opath.parent))) {
         return;
@@ -696,7 +700,7 @@ function judgeInjectArraySuspect(path, ctx) {
     path = jumpOverIife(path);
     node = path.node;
 
-    if (t.isClassDeclaration(node)){
+    if (t.isClass(node)){
         declaratorName = node.id.name;
         node = getConstructor(node);
     }

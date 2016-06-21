@@ -19,9 +19,30 @@ module.exports = {
           }
       }
       svc.$inject = ['dep1'];
-
       angular.module('MyMod').service('MySvc', svc);
     }
+  },
+  {
+    name: "exported class",
+    noES5: true, // this works with the ES2015 preset, but the transformations
+                 // make it difficult to test
+    input: `
+      export default class svc {
+          constructor(dep1){
+              this.dep1 = dep1;
+          }
+      }
+      angular.module('MyMod').service('MySvc', svc);
+    `,
+    expected: `
+      export default class svc {
+          constructor(dep1){
+              this.dep1 = dep1;
+          }
+      }
+      svc.$inject = ['dep1'];
+      angular.module('MyMod').service('MySvc', svc);
+    `
   },
   {
     name: "annotated class",

@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-angularjs-annotate",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Babel plugin to add angularjs dependency injection annotations",
   "main": "babel-ng-annotate.js",
   "repository": {
@@ -10,6 +10,7 @@
   "dependencies": {
     "babel": "^6.5.1",
     "babel-plugin-transform-es2015-function-name": "^6.9.0",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.9.0",
     "simple-is": "~0.2.0"
   },
   "devDependencies": {

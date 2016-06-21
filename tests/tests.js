@@ -50,17 +50,23 @@ function runTest(test) {
 
     var resolve = (file) => path.resolve(__dirname, file);
 
-    var out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:["./es2015-modified"].map(resolve) });
-    var expected = babel.transform(fnBody(test.expected), { plugins: [], presets:["./es2015-modified"].map(resolve) });
+    var out, expected;
 
+    // Test transpiled ES5 sources
+    if(!test.noES5){
+      out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:["./es2015-modified"].map(resolve) });
+      expected = babel.transform(fnBody(test.expected), { plugins: [], presets:["./es2015-modified"].map(resolve) });
 
-    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES5: ' + test.name);
+      t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES5: ' + test.name);
+    }
 
     // And again without the ES6 transformations
-    out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:[].map(resolve) });
-    expected = babel.transform(fnBody(test.expected), { plugins: [], presets:[].map(resolve) });
+    if(!test.noES6){    
+      out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:[].map(resolve) });
+      expected = babel.transform(fnBody(test.expected), { plugins: [], presets:[].map(resolve) });
 
-    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES2015: ' + test.name);
+      t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES2015: ' + test.name);
+    }
 
     t.end();
   });
@@ -75,7 +81,11 @@ function runTest(test) {
 
 
 function fnBody(fn){
-  return fn.toString().match(/function[^{]+\{([\s\S]*)\}$/)[1];
+  if(typeof fn === 'function'){
+    return fn.toString().match(/function[^{]+\{([\s\S]*)\}$/)[1];
+  } else {
+    return fn;
+  }
 }
 
 function wrapInAngularModule(fn){

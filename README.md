@@ -1,17 +1,16 @@
 # babel-plugin-angularjs-annotate
 
-[![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/bablel-plugin-angularjs-annotate) [![npm version](https://badge.fury.io/js/babel-plugin-angularjs-annotate.svg)](https://badge.fury.io/js/babel-plugin-angularjs-annotate)
+[![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate) [![npm version](https://badge.fury.io/js/babel-plugin-angularjs-annotate.svg)](https://badge.fury.io/js/babel-plugin-angularjs-annotate)
 
-Experimental fork of [ng-annotate](https://github.com/olov/ng-annotate).  Adds Angular 1.x DI annotations to ES5/ES6 code being processed by babel, with support for explicit annotations (`/* @ngInject */`) and implicit annotations of idiomatic Angular code.
+Fork of [ng-annotate](https://github.com/olov/ng-annotate) for Babel users, with a focus on speed and ES6 support.
 
-Work in progress.  **Test thoroughly before using this in production.**  If stability is a priority, consider [ng-annotate](https://github.com/olov/ng-annotate)
-or [babel-ng-annotate](https://github.com/mchmielarski/babel-plugin-ng-annotate), which are both excellent alternatives to this plugin.
+Adds Angular 1.x DI annotations to ES5/ES6 code being processed by Babel, with support for explicit annotations (`/* @ngInject */`), and automatic (implicit) annotation of typical Angular code patterns.
 
-This plugin currently supports matching and transforming all of the patterns currently recognized by ng-annotate (explicit and implicit), and passes the relevant portions of ng-annotate's test suite.  ES6 support will be expanded in future releases -- contributions are welcome!
+Fully compatible with ES5, transpiled ES6, and raw ES6 sources.  Offers significantly reduced build times for projects already using Babel, compared to the standalone ng-annotate tool.
 
-See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation for more details. 
+This plugin currently supports matching and transforming all of the patterns currently recognized by ng-annotate (explicit and implicit), and passes the relevant portions of ng-annotate's test suite.
 
-## Usage
+## Installation
 
 Use like any other [Babel plugin](https://babeljs.io/docs/plugins/).  
 
@@ -30,10 +29,56 @@ and add the plugin to your `.babelrc` file:
 }
 ```
 
+## Usage
+
+See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation and the [test sources](tests/) for details about the patterns that can be automatically detected by ng-annotate and this plugin, as well as information about how to explicitly mark functions and classes for annotation. 
+
+### ES6 Annotations
+
+This plugin can annotate some ES6 classes that are not supported by ng-annotate:
+
+#### Implicit Class Annotation
+
+If a class is declared as an Angular service or factory in the same file as it is declared, it will be annotated automatically:
+
+```js
+class svc {
+    constructor(dep1){
+        this.dep1 = dep1;
+    }
+}
+angular.module('MyMod').service('MySvc', svc);
+```
+
+Becomes:
+
+```js
+class svc {
+    constructor(dep1){
+        this.dep1 = dep1;
+    }
+}
+svc.$inject = ['dep1'];
+angular.module('MyMod').service('MySvc', svc);
+```
+
+#### Explicit Class Annotation
+
+If a class is exported and used in another file/module, it must be explicitly marked for injection:
+
+```js
+/* @ngInject */
+class svc {
+  constructor(dep1){
+      this.dep1 = dep1;
+  }
+}
+```
+
 ## Goals & Tasks
 
 This project/experiment does _not_ seek to replace ng-annotate.  However, it does seek to provide similar 
-functionality for Angular 1.x developers who are already using Babel and/or coding in ES6.
+functionality for Angular 1.x developers who are already using Babel and/or writing code in ES6.
 
 Because of some of the limitations presented by Babel's transformation process, this project does not aim to 
 achieve feature parity, or provide identical output to ng-annotate. Notably, Babel does not preserve formatting
@@ -50,7 +95,7 @@ That being said, this is my short-term todo list:
 * ✓ Actually pass those tests.
 * ✓ Pass tests in conjunction with the ES2015 preset. _(almost)_
 * ✓ Cleanup.  Remove vestigial functionality from the upstream project.
-* Support a (very) limited set of ES6-friendly annotation patterns.  
+* ✓ Support a limited set of ES6-friendly annotation patterns.  
 * ✓ Publish to npm, make a release, etc.
 
 ### To run tests:
