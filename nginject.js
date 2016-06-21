@@ -13,7 +13,9 @@ module.exports = {
     inspectFunction: inspectFunction,
     inspectObjectExpression: inspectObjectExpression,
     inspectAssignment: inspectAssignment,
-    inspectDeclarator: inspectDeclarator
+    inspectDeclarator: inspectDeclarator,
+    inspectClassDeclaration: inspectClassDeclaration,
+    inspectClassMethod: inspectClassMethod
 };
 
 function inspectCallExpression(path, ctx) {
@@ -44,16 +46,19 @@ const ngAnnotatePrologueDirectives = ["ngInject", "ngNoInject"];
 function inspectFunction(path, ctx) {
     const node = path.node;
 
-    if(inspectComment(path, ctx)){
-      return;
-    }
-
     if(t.isVariableDeclarator(path.parent) && t.isVariableDeclaration(path.parentPath.parent)){
-      var annotation = getAnnotation(path.parentPath.parent);
+      let annotation = getAnnotation(path.parentPath.parent);
+      if(annotation === null){
+        annotation = getAnnotation(node);
+      }
       if(annotation !== null){
         addSuspect(path.parentPath.parentPath, ctx, !annotation);
         return;
       }
+    }
+
+    if(inspectComment(path, ctx)){
+      return;
     }
 
     const str = matchPrologueDirectives(ngAnnotatePrologueDirectives, path);
@@ -229,6 +234,36 @@ function inspectDeclarator(path, ctx){
   let annotation = getAnnotations(candidates);
   if(annotation !== null){
     addSuspect(path, ctx, !annotation);
+  }
+}
+
+function inspectClassDeclaration(path, ctx){
+  const node = path.node;
+  let annotation = getAnnotation(node);
+  if(annotation !== null){
+    addSuspect(path, ctx, !annotation);
+  }
+}
+
+function inspectClassMethod(path, ctx){
+  const node = path.node;
+
+  if(node.kind !== 'constructor'){
+    return;
+  }
+
+  let annotation = getAnnotation(path.node);
+  if(annotation === null){
+    return;
+  }
+
+  const ancestry = path.getAncestry();
+  for(var i=0; i < ancestry.length; i++){
+    let ancestor = ancestry[i];
+    if(ancestor.isClassDeclaration()){
+      addSuspect(ancestor, ctx, !annotation);
+      return;
+    }
   }
 }
 

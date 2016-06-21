@@ -67,6 +67,16 @@ module.exports = function() {
           ngInject.inspectDeclarator(path, ctx);
         }
       },
+      ClassDeclaration: {
+        enter(path) {
+          ngInject.inspectClassDeclaration(path, ctx);
+        }
+      },
+      ClassMethod: {
+        enter(path) {
+          ngInject.inspectClassMethod(path, ctx);
+        }
+      },
       ObjectExpression: {
         enter(path) {
           ngInject.inspectObjectExpression(path, ctx);

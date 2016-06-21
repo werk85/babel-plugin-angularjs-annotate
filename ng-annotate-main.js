@@ -628,7 +628,14 @@ function followReference(path) {
     const bound = binding.path;
 
     if (is.someof(kind, ["const", "let", "var"])) {
-        assert(t.isVariableDeclarator(bound));
+        
+        if(t.isVariableDeclaration(bound)){
+            var declarations = bound.get('declarations');
+            assert(declarations.length === 1);
+            return declarations[0];
+        }
+
+        assert(t.isVariableDeclarator(bound) || t.isClassDeclaration(bound));
         // {type: "VariableDeclarator", id: {type: "Identifier", name: "foo"}, init: ..}
         return bound;
     } else if (kind === "hoisted") {
@@ -677,7 +684,6 @@ function judgeInjectArraySuspect(path, ctx) {
         declaratorName = node.id.name;
         node = node.init; // var foo = ___;
         path = path.get("init");
-
     } else {
         opath = path;
     }
@@ -690,7 +696,12 @@ function judgeInjectArraySuspect(path, ctx) {
     path = jumpOverIife(path);
     node = path.node;
 
-    if (isFunctionExpressionWithArgs(node)) {
+    if (t.isClassDeclaration(node)){
+        declaratorName = node.id.name;
+        node = getConstructor(node);
+    }
+
+    if (isFunctionExpressionWithArgs(node) || t.isClassMethod(node)) {
         // var x = 1, y = function(a,b) {}, z;
 
         if(node.id && node.id.name !== declaratorName){
@@ -792,6 +803,16 @@ function isFunctionDeclarationWithArgs(node) {
 }
 function isGenericProviderName(node) {
     return t.isLiteral(node) && is.string(node.value);
+}
+
+function getConstructor(node){
+    var body = node.body.body;
+    for(var i=0; i< body.length; i++){
+        let node = body[i];
+        if(node.kind === 'constructor'){
+            return node;
+        }
+    }
 }
 
 module.exports.match = match;

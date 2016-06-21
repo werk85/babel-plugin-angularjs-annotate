@@ -15,7 +15,8 @@ let suites = [
   require('./modals'),
   require('./ngInject'),
   require('./issues'),
-  require('./references')
+  require('./references'),
+  require('./es6.js')
 ];
 
 function runSuite(suite){
@@ -53,7 +54,14 @@ function runTest(test) {
     var expected = babel.transform(fnBody(test.expected), { plugins: [], presets:["./es2015-modified"].map(resolve) });
 
 
-    t.equals(out.code.trim(), expected.code.trim(), test.name);
+    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES5: ' + test.name);
+
+    // And again without the ES6 transformations
+    out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:[].map(resolve) });
+    expected = babel.transform(fnBody(test.expected), { plugins: [], presets:[].map(resolve) });
+
+    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES2015: ' + test.name);
+
     t.end();
   });
 
