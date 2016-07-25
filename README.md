@@ -25,7 +25,7 @@ and add the plugin to your `.babelrc` file:
 ```json
 {
   "presets": ["es2015"],
-  "plugins": ["path/to/babel-ng-annotate"]
+  "plugins": ["angularjs-annotate"]
 }
 ```
 
