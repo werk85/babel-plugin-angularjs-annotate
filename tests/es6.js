@@ -122,6 +122,28 @@ module.exports = {
       svc.$inject = ['dep1'];
       svc.foo = 'bar';
     }
-  }  
+  },
+  {
+    name: "constructor with prologue directive",
+    input: function(){
+      class svc {
+          constructor(dep1){
+              'ngInject';
+              this.dep1 = dep1;
+          }
+      }
+      svc.foo = 'bar';
+    },
+    expected: function(){
+      class svc {
+          constructor(dep1){
+              'ngInject';
+              this.dep1 = dep1;
+          }
+      }
+      svc.$inject = ['dep1'];
+      svc.foo = 'bar';
+    }
+  }
  ]
 };

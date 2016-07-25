@@ -42,8 +42,6 @@ function inspectCallExpression(path, ctx) {
     });
 }
 
-const ngAnnotatePrologueDirectives = ["ngInject", "ngNoInject"];
-
 function inspectFunction(path, ctx) {
     const node = path.node;
 
@@ -62,17 +60,16 @@ function inspectFunction(path, ctx) {
       return;
     }
 
-    const str = matchPrologueDirectives(ngAnnotatePrologueDirectives, path);
-    if (!str) {
+    const annotate = matchPrologueDirectives(path);
+    if (annotate === null) {
         return;
     }
-    const block = (str === "ngNoInject");
 
     // now add the correct suspect
 
     // for function declarations, it is always the function declaration node itself
     if (t.isFunctionDeclaration(node)) {
-        addSuspect(path, ctx, block);
+        addSuspect(path, ctx, !annotate);
         return;
     }
 
@@ -86,7 +83,7 @@ function inspectFunction(path, ctx) {
     // or /*@ngInject*/ var f1 = function(a) ..
     // f1.$inject = ["a"]; will be added (or rebuilt/removed)
     if (t.isVariableDeclarator(path.parent)) {
-        addSuspect(path.parentPath, ctx, block);
+        addSuspect(path.parentPath, ctx, !annotate);
         return;
     }
 
@@ -104,9 +101,9 @@ function inspectFunction(path, ctx) {
     // }]);
     const maybeArrayExpression = path.parent;
     if (isAnnotatedArray(maybeArrayExpression)) {
-        addSuspect(path.parentPath, ctx, block);
+        addSuspect(path.parentPath, ctx, !annotate);
     } else {
-        addSuspect(path, ctx, block);
+        addSuspect(path, ctx, !annotate);
     }
 }
 
@@ -189,13 +186,16 @@ function inspectObjectExpression(path, ctx) {
   // });
 }
 
-function matchPrologueDirectives(prologueDirectives, path) {
+function matchPrologueDirectives(path) {
+    const prologueDirectives = ["ngInject", "ngNoInject"];
     const directives = path.node.body.directives || [];
     let matches = directives.map(dir => dir.value.value)
       .filter(val => prologueDirectives.indexOf(val) !== -1);
 
     if(matches.length){
-      return matches[0];
+      let match = matches[0].trim();
+      if(match === "ngInject") return true;
+      if(match === "ngNoInject") return false;
     }
 
     return null;
@@ -255,7 +255,10 @@ function inspectClassMethod(path, ctx){
 
   let annotation = getAnnotation(path.node);
   if(annotation === null){
-    return;
+    annotation = matchPrologueDirectives(path);
+    if(annotation === null) {
+      return;
+    }
   }
 
   const ancestry = path.getAncestry();
