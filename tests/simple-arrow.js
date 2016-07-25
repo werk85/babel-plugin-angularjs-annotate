@@ -531,5 +531,5 @@ module.exports = {
       angular.module("MyMod").controller("MyCtrl", myCtrl10);
     }
   }
- ]
+ ].map(t => { t.implicit=true; return t; })
 };

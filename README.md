@@ -29,6 +29,21 @@ and add the plugin to your `.babelrc` file:
 }
 ```
 
+## Options
+
+### `explicitOnly`
+
+By default, this plugin will attempt to add annotations to common AngularJS code patterns.  This behavior can be disabled (requiring you to mark up functions with `/* @ngInject */` or `'ngInject'`).
+
+To pass this option to the plugin, [add it to your Babel configuration](https://babeljs.io/docs/plugins/#plugin-options):
+
+```json
+{
+  "presets": ["es2015"],
+  "plugins": [["angularjs-annotate", { "explicitOnly" : true}]]
+}
+```
+
 ## Usage
 
 See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation and the [test sources](tests/) for details about the patterns that can be automatically detected by ng-annotate and this plugin, as well as information about how to explicitly mark functions and classes for annotation. 

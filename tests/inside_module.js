@@ -4,6 +4,7 @@ module.exports = {
   {
     name: "Injector invoke",
     contextDependent: true,
+    implicit: true,
     input: function(){
       $injector.invoke(function($compile) {
           $compile(myElement)(scope);
@@ -17,6 +18,7 @@ module.exports = {
   },
   {
     name: "httpProvider",
+    implicit: true,
     contextDependent: true,
     input: function(){
       $httpProvider.interceptors.push(function($scope) { a });
@@ -29,6 +31,7 @@ module.exports = {
   },
   {
     name: "$routeProvider",
+    implicit: true,
     contextDependent: true,
     input: function(){
       $routeProvider.when("path", {

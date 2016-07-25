@@ -3,6 +3,7 @@ module.exports = {
   tests: [
   {
     name: "Long form",
+    implicit: true,
     input: function(){
       angular.module("MyMod").controller("MyCtrl", function($scope, $timeout) {
       });
@@ -14,6 +15,7 @@ module.exports = {
   },
   {
     name: "w/ dependencies",
+    implicit: true,
     input: function(){
       angular.module("MyMod", ["OtherMod"]).controller("MyCtrl", function($scope, $timeout) {
       });
@@ -25,6 +27,7 @@ module.exports = {
   },
   {
     name: "Simple controller",
+    implicit: true,
     input: function(){
       myMod.controller("foo", function($scope, $timeout) {
       });
@@ -36,6 +39,7 @@ module.exports = {
   },
   {
     name: "Simple service",
+    implicit: true,
     input: function(){
       myMod.service("foo", function($scope, $timeout) {
       });
@@ -47,6 +51,7 @@ module.exports = {
   },
   {
     name: "Simple factory",
+    implicit: true,
     input: function(){
       myMod.factory("foo", function($scope, $timeout) {
       });
@@ -58,6 +63,7 @@ module.exports = {
   },
   {
     name: "Simple filter",
+    implicit: true,
     input: function(){
       myMod.filter("foo", function($scope, $timeout) {
       });
@@ -69,6 +75,7 @@ module.exports = {
   },
   {
     name: "Simple directive",
+    implicit: true,
     input: function(){
       myMod.directive("foo", function($scope, $timeout) {
       });
@@ -80,6 +87,7 @@ module.exports = {
   },
   {
     name: "Simple animation",
+    implicit: true,
     input: function(){
       myMod.animation("foo", function($scope, $timeout) {
       });
@@ -91,6 +99,7 @@ module.exports = {
   },
   {
     name: "Simple invoke",
+    implicit: true,
     input: function(){
       myMod.invoke("foo", function($scope, $timeout) {
       });
@@ -102,6 +111,7 @@ module.exports = {
   },
   {
     name: "Simple store",
+    implicit: true,
     input: function(){
       myMod.store("foo", function($scope, $timeout) {
       });
@@ -113,6 +123,7 @@ module.exports = {
   },
   {
     name: "Simple decorator",
+    implicit: true,
     input: function(){
       myMod.decorator("foo", function($scope, $timeout) {
       });
@@ -124,6 +135,7 @@ module.exports = {
   },
   {
     name: "Simple component",
+    implicit: true,
     input: function(){
       myMod.component("foo", {controller: function($scope, $timeout) {}});
     },
@@ -133,6 +145,7 @@ module.exports = {
   },
   {
     name: "Implict config function",
+    implicit: true,
     input: function(){
       // implicit config function
       angular.module("MyMod", function($interpolateProvider) {});
@@ -148,6 +161,7 @@ module.exports = {
   },
   {
     name: "Object property",
+    implicit: true,
     input: function(){
       // object property
       var myObj = {};
@@ -164,6 +178,7 @@ module.exports = {
   },
   {
     name: "Simple invocations w/ no dependencies",
+    implicit: true,
     input: function(){
       // no dependencies => no need to wrap the function in an array
       myMod.controller("foo", function() {
@@ -211,6 +226,7 @@ module.exports = {
   },
   {
     name: "Simple run/config",
+    implicit: true,
     input: function(){
       // run, config don't take names
       myMod.run(function($scope, $timeout) {
@@ -236,6 +252,7 @@ module.exports = {
   },
   {
     name: "Directive return object",
+    implicit: true,
     input: function(){
       // directive return object
       myMod.directive("foo", function($scope) {
@@ -273,6 +290,7 @@ module.exports = {
   },
   {
     name: "Simple chaining",
+    implicit: true,
     input: function(){
       myMod.directive("foo", function($a, $b) {
           a;
@@ -318,6 +336,7 @@ module.exports = {
   },
   {
     name: "Less simple chaining",
+    implicit: true,
     input: function(){
       angular.module("MyMod").directive("foo", function($a, $b) {
           a;
@@ -379,6 +398,7 @@ module.exports = {
   },
   {
     name: "$provide",
+    implicit: true,
     input: function(){
       angular.module("myMod").controller("foo", function() {
           $provide.decorator("foo", function($scope) {});
@@ -412,6 +432,7 @@ module.exports = {
   },
   {
     name: "negative $provide",
+    implicit: true,
     input: function(){
       function notInContext() {
           $provide.decorator("foo", function($scope) {});
@@ -443,6 +464,7 @@ module.exports = {
   },
   {
     name: "ControllerProvider",
+    implicit: true,
     input: function(){
       angular.module("myMod").controller("foo", function() {
           $controllerProvider.register("foo", function($scope) {});
@@ -462,6 +484,7 @@ module.exports = {
   },
   {
     name: "directive return object is only valid inside directive",
+    implicit: true,
     input: function(){
       myMod.service("donttouch", function() {
           return {
@@ -493,6 +516,7 @@ module.exports = {
   },
   {
     name: "IIFE-jumping with reference support",
+    implicit: true,
     input: function(){
       var myCtrl = (function () {
           return function($scope) {
@@ -511,6 +535,7 @@ module.exports = {
   },
   {
     name: "advanced IIFE-jumping (with reference support)",
+    implicit: true,
     input: function(){
       var myCtrl10 = (function() {
           "use strict";

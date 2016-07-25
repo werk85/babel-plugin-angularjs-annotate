@@ -108,6 +108,7 @@ module.exports = {
     // },
     {
       name: "proper scope analysis including shadowing",
+      implicit: true,
       input: function(){
         "use strict";
         function MyCtrl1(a, b) {
@@ -136,6 +137,7 @@ module.exports = {
     },
     {
       name: "explicit annotation on reference flows back to definition",
+      explicit: true,
       input: function(){
         function MyCtrl2(z) {
         }
@@ -151,6 +153,7 @@ module.exports = {
     },
     {
       name: "hoisted function should chain onto module",
+      implicit: true,
       input: function(){
         angular.module("MyMod").directive("foo", MyDirective);
 

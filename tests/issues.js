@@ -3,6 +3,7 @@ module.exports = {
   tests: [
     {
       name: "regression-test for https://github.com/olov/ng-annotate/issues/221",
+      explicit: true,
       input: function(){
         var FooBar = (function (_super) {
             __extends(FooBar, _super);
@@ -87,6 +88,7 @@ module.exports = {
     {
       name: "$stateProvider.decorator should not be injected",
       // not a module declaration short-form, see https://github.com/olov/ng-annotate/issues/82
+      implicit: true,
       input: function(){
         $stateProvider.decorator('parent', function (state, parentFn) {
           doStuff();
@@ -118,6 +120,7 @@ module.exports = {
     },
     {
       name: "empty var declarator",
+      implicit: true,
       input: function(){
         var MyCtrl12;
         angular.module("MyMod").controller('MyCtrl', MyCtrl12);
@@ -129,6 +132,7 @@ module.exports = {
     },
     {
       name: "issue 115",
+      explicit: true,
       input: function(){
         module.exports = function() {
             "use strict";
@@ -158,6 +162,7 @@ module.exports = {
     },
     {
       name: "issue 135",
+      explicit: true,
       input: function(){
         var MyCtrl = (function() {
             /*@ngInject*/

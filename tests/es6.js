@@ -4,6 +4,7 @@ module.exports = {
   tests: [
   {
     name: "simple class",
+    implicit: true,
     input: function(){
           class svc {
               constructor(dep1){
@@ -24,6 +25,7 @@ module.exports = {
   },
   {
     name: "exported class",
+    implicit: true,
     noES5: true, // this works with the ES2015 preset, but the transformations
                  // make it difficult to test
     input: `
@@ -46,6 +48,7 @@ module.exports = {
   },
   {
     name: "exported annotated function",
+    explicit: true,
     input: `
       /* @ngInject */
       export default function svc(dep1){}
@@ -58,6 +61,7 @@ module.exports = {
   },
   {
     name: "annotated class",
+    explicit: true,
     input: function(){
       /* @ngInject */
       class svc {
@@ -81,6 +85,7 @@ module.exports = {
   {
     name: "exported annotated class",
     noES5: true,
+    explicit: true,
     input: `
       /* @ngInject */
       export default class svc {
@@ -103,6 +108,7 @@ module.exports = {
   },
   {
     name: "annotated constructor",
+    explicit: true,
     input: function(){
       class svc {
           /* @ngInject */
@@ -125,6 +131,7 @@ module.exports = {
   },
   {
     name: "constructor with prologue directive",
+    explicit: true,
     input: function(){
       class svc {
           constructor(dep1){

@@ -3,6 +3,7 @@ module.exports = {
     tests: [
       {
         name: "Modal Open",
+        implicit: true,
         contextDependent: true,
         input: function(){
           $modal.open({
@@ -32,6 +33,7 @@ module.exports = {
       {
         name: "uibModal Open",
         contextDependent: true,
+        implicit: true,
         input: function(){
           $uibModal.open({
               templateUrl: "str",
@@ -59,6 +61,7 @@ module.exports = {
       },
       {
         name: "Material Design Modal",
+        implicit: true,
         contextDependent: true,
         input: function(){
           $mdDialog.show({
@@ -88,6 +91,7 @@ module.exports = {
       {
         name: "Material Design Bottom Sheet",
         contextDependent: true,
+        implicit: true,
         input: function(){
           $mdBottomSheet.show({
               templateUrl: "str",
@@ -116,6 +120,7 @@ module.exports = {
       {
         name: "Material Design Toast",
         contextDependent: true,
+        implicit: true,
         input: function(){
           $mdToast.show({
               templateUrl: "str",

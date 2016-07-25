@@ -57,9 +57,11 @@ module.exports = function() {
         enter(path) {
           ngInject.inspectAssignment(path, ctx);
         },
-        exit(path) {
-          let targets = matchProviderGet(path);
-          addTargets(targets);
+        exit(path, state) {
+          if(!state.opts.explicitOnly){
+            let targets = matchProviderGet(path);
+            addTargets(targets);
+          }
         }
       },
       VariableDeclarator: {
@@ -81,15 +83,19 @@ module.exports = function() {
         enter(path) {
           ngInject.inspectObjectExpression(path, ctx);
         },
-        exit(path) {
-          let targets = matchProviderGet(path);
-          addTargets(targets);
+        exit(path, state) {
+          if(!state.opts.explicitOnly){
+            let targets = matchProviderGet(path);
+            addTargets(targets);
+          }
         }
       },
       ReturnStatement: {
-        exit(path) {
-          let targets = matchDirectiveReturnObject(path);
-          addTargets(targets);
+        exit(path, state) {
+          if(!state.opts.explicitOnly){
+            let targets = matchDirectiveReturnObject(path);
+            addTargets(targets);
+          }
         }
       },
       FunctionExpression: {
@@ -111,9 +117,9 @@ module.exports = function() {
         enter(path) {
           ngInject.inspectCallExpression(path, ctx);
         },
-        exit(path) {
-          let targets = match(path, ctx);
-          addTargets(targets);
+        exit(path, state) {
+            let targets = match(path, ctx, state.opts.explicitOnly);
+            addTargets(targets);
         }
       },
       ExportDeclaration: {
@@ -123,6 +129,8 @@ module.exports = function() {
       },
       Program: {
         enter(path, file) {
+          file.opts.explicitOnly = file.opts.explicitOnly || false;
+
           ctx.suspects = [];
           ctx.blocked = [];
           ctx.fragments = [];

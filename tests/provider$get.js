@@ -3,6 +3,7 @@ module.exports = {
   tests: [
   {
     name: "No dependencies",
+    implicit: true,
     input: function(){
       myMod.provider("foo", function() {
           this.$get = function() {
@@ -20,6 +21,7 @@ module.exports = {
   },
   {
     name: "Simple { $get }",
+    implicit: true,
     input: function(){
       myMod.provider("foo", {
           $get: function() {
@@ -67,6 +69,7 @@ module.exports = {
   },
   {
     name: "Simple this.$get",
+    implicit: true,
     input: function(){
       myMod.provider("foo", function() {
           this.$get = function() {
@@ -90,6 +93,7 @@ module.exports = {
   },
   {
     name: "Simple return { $get }",
+    implicit: true,
     input: function(){
       myMod.provider("foo", function() {
           return {
@@ -121,6 +125,7 @@ module.exports = {
   },
   {
     name: "this.$get w/ reference-following",
+    implicit: true,
     input: function(){
       myMod.provider("foo", function($scope) {
           this.$get = function($scope, $timeout) {
@@ -144,6 +149,7 @@ module.exports = {
   },
   {
     name: "this.$get w/ reference-following and hoisting",
+    implicit: true,
     input: function(){
       myMod.provider("foo", extprov);
       function extprov(x) {
@@ -189,6 +195,7 @@ module.exports = {
   },
   {
     name: "$get is only valid inside a provider",
+    implicit: true,
     input: function(){
       // $get is only valid inside provider
       myMod.service("donttouch", function() {

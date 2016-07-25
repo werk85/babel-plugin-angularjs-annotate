@@ -4,6 +4,7 @@ module.exports = {
     {
       name: "ui-router $stateProvider",
       contextDependent: true,
+      implicit: true,
       input: function(){
         $stateProvider.state("myState", {
             resolve: {
@@ -94,6 +95,7 @@ module.exports = {
     {
       name: "ui-router $urlRouterProvider",
       contextDependent: true,
+      implicit: true,
       input: function(){
         $urlRouterProvider.when("/", function($match) { a; });
         $urlRouterProvider.otherwise("", function(a) { a; });
@@ -108,6 +110,7 @@ module.exports = {
     {
       name: "ui-router stateHelperProvider",
       contextDependent: true,
+      implicit: true,
       input: function(){
         stateHelperProvider.setNestedState({
             controller: function($scope, simpleObj, promiseObj, translations) { c },

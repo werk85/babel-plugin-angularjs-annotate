@@ -7,6 +7,11 @@ const indent = require('indent-string');
 const tape = require('tape').test;
 const path = require('path');
 
+const resolve = (file) => path.resolve(__dirname, file);
+
+const ES6presets = [resolve("./es2015-modified")];
+const plugin = resolve("../babel-ng-annotate.js");
+
 let suites = [
   require('./simple'),
   require('./simple-arrow'),
@@ -50,24 +55,14 @@ function runTest(test) {
     // var out = babel.transform(fnBody(test.input),  { plugins: "../babel-ng-annotate", presets: ["../es2015-modified"] });
     // var expected = babel.transform(fnBody(test.expected), { plugins: [], presets: ["../es2015-modified"] });
 
-    var resolve = (file) => path.resolve(__dirname, file);
-
-    var out, expected;
-
     // Test transpiled ES5 sources
     if(!test.noES5){
-      out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:["./es2015-modified"].map(resolve) });
-      expected = babel.transform(fnBody(test.expected), { plugins: [], presets:["./es2015-modified"].map(resolve) });
-
-      t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES5: ' + test.name);
+      doTransform(t, test, ES6presets, 'ES5');
     }
 
     // And again without the ES6 transformations
-    if(!test.noES6){    
-      out = babel.transform(fnBody(test.input),  { plugins: ["../babel-ng-annotate.js"].map(resolve), presets:[].map(resolve) });
-      expected = babel.transform(fnBody(test.expected), { plugins: [], presets:[].map(resolve) });
-
-      t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), 'ES2015: ' + test.name);
+    if(!test.noES6){   
+      doTransform(t, test, [], 'ES2015'); 
     }
 
     t.end();
@@ -81,6 +76,29 @@ function runTest(test) {
   // }
 }
 
+function doTransform(t, test, presets, logPrefix){
+
+  let out = babel.transform(fnBody(test.input),  { plugins: [plugin], presets: presets });
+  let expected = babel.transform(fnBody(test.expected), { plugins: [], presets: presets });
+
+  t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), logPrefix + ': ' + test.name);
+
+  // If test is marked as explicit, it should still work when explicitOnly is on
+  if(test.explicit){
+    out = babel.transform(fnBody(test.input),  { plugins: [[plugin, {explicitOnly: true}]], presets:presets });
+
+    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), logPrefix + ' explicitOnly: ' + test.name);
+  }
+
+  // If test is marked as implicit, no transformation should occur when explicitOnly is on
+  if(test.implicit){
+    out = babel.transform(fnBody(test.input),  { plugins: [[plugin, {explicitOnly: true}]], presets: presets });
+    expected = babel.transform(fnBody(test.input), { plugins: [], presets: presets });
+
+    t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), logPrefix + 'explicitOnly: ' + test.name);
+  }
+
+}
 
 function fnBody(fn){
   if(typeof fn === 'function'){

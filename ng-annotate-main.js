@@ -16,7 +16,7 @@ const chainedUrlRouterProvider = 2;
 const chainedStateProvider = 3;
 const chainedRegular = 4;
 
-function match(path, ctx, matchPlugins) {
+function match(path, ctx, explicitOnly) {
     const node = path.node;
     const isMethodCall = (
         t.isCallExpression(node) &&
@@ -25,6 +25,10 @@ function match(path, ctx, matchPlugins) {
         );
 
     if(isMethodCall && ngInject.inspectComment(path, ctx)){
+        return false;
+    }
+
+    if(explicitOnly){
         return false;
     }
 

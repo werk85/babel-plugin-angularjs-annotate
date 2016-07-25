@@ -366,6 +366,7 @@ module.exports = {
         function MyDirective2($stateProvider) {
             $stateProvider.state('astate', {
                 resolve: {
+                    /* @ngInject */
                     yoyo: function(ma) {
                     },
                 }
@@ -379,6 +380,7 @@ module.exports = {
         function MyDirective2($stateProvider) {
             $stateProvider.state('astate', {
                 resolve: {
+                    /* @ngInject */
                     yoyo: ['ma', function(ma) {
                     }],
                 }
@@ -386,5 +388,5 @@ module.exports = {
         }
       }
     }
-  ]
+  ].map(t => { t.explicit=true; return t; })
 }
