@@ -97,6 +97,11 @@ module.exports = function() {
           ngInject.inspectFunction(path, ctx);
         }
       },
+      ArrowFunctionExpression: {
+        enter(path) {
+          ngInject.inspectFunction(path, ctx);
+        }
+      },
       FunctionDeclaration: {
         enter(path) {
           ngInject.inspectFunction(path, ctx);

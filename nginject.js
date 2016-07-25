@@ -171,7 +171,7 @@ function inspectObjectExpression(path, ctx) {
     addSuspect(path, ctx, !annotateEverything);
   } else {
     path.get("properties")
-    .filter(prop => t.isFunctionExpression(prop.node.value))
+    .filter(prop => isFunctionExpressionOrArrow(prop.node.value))
     .forEach(prop => inspectComment(prop, ctx));
   }
 
@@ -203,7 +203,7 @@ function matchPrologueDirectives(prologueDirectives, path) {
 
 function inspectAssignment(path, ctx){
   const node = path.node;
-  if(!t.isFunctionExpression(node.right)){
+  if(!isFunctionExpressionOrArrow(node.right)){
     return;
   }
 
@@ -221,7 +221,7 @@ function inspectAssignment(path, ctx){
 
 function inspectDeclarator(path, ctx){
   const node = path.node;
-  if(!t.isFunctionExpression(node.init)){
+  if(!isFunctionExpressionOrArrow(node.init)){
     return;
   }
 
@@ -352,7 +352,7 @@ function nestedObjectValues(path, res) {
 
     path.get("properties").forEach(function(prop) {
         const v = prop.get("value");
-        if (t.isFunctionExpression(v) || t.isArrayExpression(v)) {
+        if (isFunctionExpressionOrArrow(v) || t.isArrayExpression(v)) {
             res.push(v);
         } else if (t.isObjectExpression(v)) {
             nestedObjectValues(v, res);
@@ -369,7 +369,7 @@ function isAnnotatedArray(node) {
     const elements = node.elements;
 
     // last should be a function expression
-    if (elements.length === 0 || !t.isFunctionExpression(last(elements))) {
+    if (elements.length === 0 || !isFunctionExpressionOrArrow(last(elements))) {
         return false;
     }
 
@@ -382,4 +382,8 @@ function isAnnotatedArray(node) {
     }
 
     return true;
+}
+
+function isFunctionExpressionOrArrow(node) {
+    return t.isFunctionExpression(node) || t.isArrowFunctionExpression(node);
 }

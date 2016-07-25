@@ -9,11 +9,13 @@ const path = require('path');
 
 let suites = [
   require('./simple'),
+  require('./simple-arrow'),
   require('./provider$get'),
   require('./inside_module'),
   require('./ui-router'),
   require('./modals'),
   require('./ngInject'),
+  require('./ngInject-arrow'),
   require('./issues'),
   require('./references'),
   require('./es6.js')

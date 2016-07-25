@@ -1,5 +1,8 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.3.0 2016-07-25
+ * Add support for ES6 arrow functions
+
 ## v0.2.0 2016-06-21
  * Add support for ES6 class annotations
  * Add support for exported ES6 classes and functions

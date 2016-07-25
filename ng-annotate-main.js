@@ -639,7 +639,7 @@ function followReference(path) {
         // {type: "VariableDeclarator", id: {type: "Identifier", name: "foo"}, init: ..}
         return bound;
     } else if (kind === "hoisted") {
-        assert(t.isFunctionDeclaration(bound) || t.isFunctionExpression(bound));
+        assert(t.isFunctionDeclaration(bound) || isFunctionExpressionOrArrow(bound));
         // FunctionDeclaration is the common case, i.e.
         // function foo(a, b) {}
 
@@ -775,7 +775,7 @@ function jumpOverIife(path) {
         console.warn("Not a path");
     }
 
-    if (!(t.isCallExpression(node) && t.isFunctionExpression(node.callee))) {
+    if (!(t.isCallExpression(node) && isFunctionExpressionOrArrow(node.callee))) {
         return path;
     }
 
@@ -799,8 +799,12 @@ function addModuleContextIndependentSuspect(target, ctx) {
     ctx.suspects.push(target);
 }
 
+function isFunctionExpressionOrArrow(node) {
+    return t.isFunctionExpression(node) || t.isArrowFunctionExpression(node);
+}
+
 function isFunctionExpressionWithArgs(node) {
-    return t.isFunctionExpression(node) && node.params.length >= 1;
+    return isFunctionExpressionOrArrow(node) && node.params.length >= 1;
 }
 function isFunctionDeclarationWithArgs(node) {
     return t.isFunctionDeclaration(node) && node.params.length >= 1;

@@ -35,7 +35,40 @@ See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation and the [
 
 ### ES6 Annotations
 
-This plugin can annotate some ES6 classes that are not supported by ng-annotate:
+This plugin can annotate some ES6 classes and arrow functions that are not supported by ng-annotate:
+
+#### Implicit arrow function annotation
+
+Arrow functions may be annotated anywhere that a "regular" function expression may be used. 
+
+**NOTE:** There are places where you _shouldn't_ use arrow functions in an Angular application.  Inside of an arrow function, the value of `this` is inherited from the lexical scope enclosing the function.  For this reason, arrow functions should not be used to declare Angular services or providers.  
+
+_If you choose to ignore this warning, we'll add the annotations to your services and providers anyway, but your application probably won't work.  Future releases may treat this condition as an error._
+
+```js
+angular.module("MyMod").controller("MyCtrl", ($scope, $timeout) => {});
+```
+
+Becomes:
+
+```js
+angular.module("MyMod").controller("MyCtrl", ["$scope", "$timeout", ($scope, $timeout) => {}]);
+```
+
+#### Explicit arrow function annotation
+
+Arrow functions may also be explicitly marked for annotation.
+
+```js
+var x = /* @ngInject */ ($scope) => {};
+```
+
+Becomes:
+
+```js
+var x = /* @ngInject */ ($scope) => {};
+x.$inject = ["$scope"]
+```
 
 #### Implicit Class Annotation
 
