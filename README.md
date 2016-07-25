@@ -108,6 +108,19 @@ class svc {
 }
 ```
 
+Prologue directives may also be used here:
+
+```js
+class svc {
+  constructor(dep1){
+      "ngInject";
+      this.dep1 = dep1;
+  }
+}
+```
+
+#### Exports
+
 Exported functions and classes may be annotated.  Exported functions must have names:
 
 ```js
