@@ -180,6 +180,35 @@ module.exports = {
             });
         }
       }
+    },
+    {
+        name: "chained component controller",
+        implicit: true,
+        input: function() {
+            var tmplProvider = function(bar){};
+            var testFeedback = {
+                controller: testFeedbackController,
+                template: tmplProvider
+            };
+            function testFeedbackController(foo) {}
+
+            angular.module("test.feedback.pkg", [])
+                .component("testFeedback", testFeedback);
+        },
+        expected: function() {
+            testFeedbackController.$inject = ["foo"];
+            var tmplProvider = function(bar){};
+            tmplProvider.$inject = ["bar"];
+            var testFeedback = {
+                controller: testFeedbackController,
+                template: tmplProvider
+            };
+            function testFeedbackController(foo) {
+            }
+
+            angular.module("test.feedback.pkg", [])
+                .component("testFeedback", testFeedback);
+        }
     }
   ]
 }

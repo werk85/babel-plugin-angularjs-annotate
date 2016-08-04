@@ -48,6 +48,8 @@ To pass this option to the plugin, [add it to your Babel configuration](https://
 
 See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation and the [test sources](tests/) for details about the patterns that can be automatically detected by ng-annotate and this plugin, as well as information about how to explicitly mark functions and classes for annotation. 
 
+[Try it out in your browser](http://schmod.github.io/babel-plugin-angularjs-annotate/).
+
 ### ES6 Annotations
 
 This plugin can annotate some ES6 classes and arrow functions that are not supported by ng-annotate:
