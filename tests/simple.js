@@ -563,6 +563,32 @@ module.exports = {
       })();
       angular.module("MyMod").controller("MyCtrl", myCtrl10);
     }
+  },
+  {
+    name: "injectable component templates/controller/templateurl",
+    implicit: true,
+    input: function(){
+      angular.module("mod").component("cmp", {
+        controller: function(a){},
+        template: function(b){},
+        templateUrl: function(c){},
+      }).component("cmp2", {
+        controller: "myCtrl",
+        template: "tmpl",
+        templateUrl: "template.html"
+      });
+    },
+    expected: function(){
+      angular.module("mod").component("cmp", {
+        controller: ["a", function(a){}],
+        template: ["b", function(b){}],
+        templateUrl: ["c", function(c){}],
+      }).component("cmp2", {
+        controller: "myCtrl",
+        template: "tmpl",
+        templateUrl: "template.html"
+      });
+    }
   }
  ]
 };

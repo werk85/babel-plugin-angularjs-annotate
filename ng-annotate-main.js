@@ -390,12 +390,8 @@ function matchRegular(path, ctx) {
         args.length === 2 && t.isLiteral(args[0]) && is.string(args[0].value) && argPaths[1]);
 
     if (method.name === "component") {
-        const controllers = target.get("properties").filter(prop => prop.node.key.name == "controller");
-        if(controllers.length === 1) {
-            target = controllers[0].get("value");
-        } else {
-            return false;
-        }
+        target.node.$chained = chainedRegular;
+        return matchComponent(target);
     }
 
     if (target) {
@@ -451,6 +447,34 @@ function matchResolve(props) {
         });
     }
     return [];
+}
+
+function matchComponent(path){
+    let chained = path.node.$chained;
+    if(t.isIdentifier(path)) {
+        path = followReference(path);
+        if(t.isVariableDeclarator(path)){
+            path = path.get('init');
+        }
+    }
+    if(t.isObjectExpression(path)){
+        path.node.chained = chained;
+        const props = path.get("properties");
+
+        const ctrl = matchProp("controller", props);
+        const tmpl =  matchProp("template", props);
+        const tmplUrl =  matchProp("templateUrl", props);
+
+        let res = [];
+        ctrl && res.push(ctrl);
+        tmpl && res.push(tmpl);
+        tmplUrl && res.push(tmplUrl);
+
+        res.forEach(t => t.node.$chained = chained);
+        return res;
+    } else {
+        return false;
+    }
 }
 
 function renamedString(ctx, originalString) {
