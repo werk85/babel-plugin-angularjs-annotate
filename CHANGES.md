@@ -1,5 +1,14 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.5.0 2016-08-04
+ * bugfix: follow references in component definition objects (#7)
+ * bugfix: remove superfluous dependency on `babel`
+ * New Feature: Add annotations to injectable `template` and `templateUrl` component properties
+ * New Feature: Adds a very simple REPL (see the `gh-pages` branch).
+
+## v0.4.0 2016-07-25
+ * New option: Disable implicit matching (only annotate functions marked up with `/* @ngInject */` or `'ngInject'`)
+
 ## v0.3.0 2016-07-25
  * Add support for ES6 arrow functions
 
