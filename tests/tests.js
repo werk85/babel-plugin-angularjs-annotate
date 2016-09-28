@@ -61,8 +61,8 @@ function runTest(test) {
     }
 
     // And again without the ES6 transformations
-    if(!test.noES6){   
-      doTransform(t, test, [], 'ES2015'); 
+    if(!test.noES6){
+      doTransform(t, test, [], 'ES2015');
     }
 
     t.end();
@@ -78,7 +78,7 @@ function runTest(test) {
 
 function doTransform(t, test, presets, logPrefix){
 
-  let out = babel.transform(fnBody(test.input),  { plugins: [plugin], presets: presets });
+  let out = babel.transform(fnBody(test.input),  { plugins: [[plugin, {explicitOnly: false}]], presets: presets });
   let expected = babel.transform(fnBody(test.expected), { plugins: [], presets: presets });
 
   t.equals(out.code.trim().replace(/\n/g,''), expected.code.trim().replace(/\n/g,''), logPrefix + ': ' + test.name);
