@@ -389,7 +389,7 @@ function matchRegular(path, ctx) {
         args.length === 1 && argPaths[0] :
         args.length === 2 && t.isLiteral(args[0]) && is.string(args[0].value) && argPaths[1]);
 
-    if (method.name === "component") {
+    if (method.name === "component" && target) {
         target.node.$chained = chainedRegular;
         return matchComponent(target);
     }
@@ -656,7 +656,7 @@ function followReference(path) {
     const bound = binding.path;
 
     if (is.someof(kind, ["const", "let", "var"])) {
-        
+
         if(t.isVariableDeclaration(bound)){
             var declarations = bound.get('declarations');
             assert(declarations.length === 1);

@@ -1,5 +1,8 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.5.2 2016-09-28
+ * bugfix: fix crash on illegal component declaration (#11)
+
 ## v0.5.0 2016-08-04
  * bugfix: follow references in component definition objects (#7)
  * bugfix: remove superfluous dependency on `babel`
