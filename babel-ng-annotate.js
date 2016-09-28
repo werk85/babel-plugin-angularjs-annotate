@@ -129,7 +129,7 @@ module.exports = function() {
       },
       Program: {
         enter(path, file) {
-          file.opts.explicitOnly = file.opts.explicitOnly || false;
+          file.opts.explicitOnly = file.opts.explicitOnly !== false;
 
           ctx.suspects = [];
           ctx.blocked = [];

@@ -2,19 +2,20 @@
 
 [![Circle CI](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate.svg?style=svg)](https://circleci.com/gh/schmod/babel-plugin-angularjs-annotate) [![npm version](https://badge.fury.io/js/babel-plugin-angularjs-annotate.svg)](https://badge.fury.io/js/babel-plugin-angularjs-annotate)
 
-Fork of [ng-annotate](https://github.com/olov/ng-annotate) for Babel users, with a focus on speed and ES6 support.
+Babel plugin to add Angular 1.x annotations to your ES5/ES6 code.  Successor to [ng-annotate](https://github.com/olov/ng-annotate) for Babel/ES6 users.
 
-Adds Angular 1.x DI annotations to ES5/ES6 code being processed by Babel, with support for explicit annotations (`/* @ngInject */`), and automatic (implicit) annotation of typical Angular code patterns.
-
-Fully compatible with ES5, transpiled ES6, and raw ES6 sources.  Offers significantly reduced build times for projects already using Babel, compared to the standalone ng-annotate tool.
-
-This plugin currently supports matching and transforming all of the patterns currently recognized by ng-annotate (explicit and implicit), and passes the relevant portions of ng-annotate's test suite.
+* Supports the full set of annotation styles supported by `ng-annotate`
+* Fully compatible with ES5, transpiled ES6, and native ES6.
+* Offers improved control - Developers can explicitly mark functions and classes for annotation via a prologue directive (`'ngInject'`) or a comment, or allow `angularjs-annotate` to automatically determine which functions to annotate.  
+* Can annotate Angular 1.5 components
+* Can annotate ES6 Classes
+* Extensive test suite
 
 ## Installation
 
 Use like any other [Babel plugin](https://babeljs.io/docs/plugins/).  
 
-Most users will want to run 
+Most users will want to run
 
 ```sh
 $ npm install babel-plugin-angularjs-annotate --save-dev
@@ -29,9 +30,28 @@ and add the plugin to your `.babelrc` file:
 }
 ```
 
+## Upgrading
+
+As of v1.0.0, `babel-plugin-angularjs-annotate` will only add annotations to functions that have been explicitly annotated
+with `'ngInject'` or `/* @ngInject */`.  To re-enable automatic/implicit matching of functions without explicit annotations,
+set [`explicitOnly`](#explicitonly) to false.
+
 ## Options
 
+[Options may be passed to babel plugins](https://babeljs.io/docs/plugins/#pluginpresets-options) by wrapping the plugin name
+in an array, and providing a settings object.  
+
+```json
+{
+  "presets": ["es2015"],
+  "plugins": [["angularjs-annotate", { "explicitOnly": false }], "someOtherPlugin"]
+}
+```
+
 ### `explicitOnly`
+
+Type: `boolean`
+Default: `true`
 
 By default, this plugin will attempt to add annotations to common AngularJS code patterns.  This behavior can be disabled (requiring you to mark up functions with `/* @ngInject */` or `'ngInject'`).
 
@@ -46,17 +66,100 @@ To pass this option to the plugin, [add it to your Babel configuration](https://
 
 ## Usage
 
-See [ng-annotate](https://github.com/olov/ng-annotate)'s documentation and the [test sources](tests/) for details about the patterns that can be automatically detected by ng-annotate and this plugin, as well as information about how to explicitly mark functions and classes for annotation. 
-
 [Try it out in your browser](http://schmod.github.io/babel-plugin-angularjs-annotate/).
 
-### ES6 Annotations
+### Recommended Usage
+
+Add a `'ngInject';` prologue directive to the top of any function that requires Angular DI annotations.  
+
+<table>
+<tr>
+  <th>Raw Code></th>
+  <th>Transformed</th>
+</tr>
+<tr>
+<td><pre lang="js">angular.module('myApp').controller('myCtrl', function($scope){
+  'ngInject';
+  doSomething();
+});</pre></td>
+<td><pre lang="js">angular.module('myApp').controller('myCtrl', ['$scope', function ($scope) {
+  'ngInject';
+  doSomething();
+}]);</pre></td>
+</tr>
+<tr><pre lang="js">class myClass{
+  constructor($scope){
+    'ngInject';
+  }
+}</pre></td>
+<td><pre lang="js">class myClass {
+  constructor($scope) {}
+}
+myClass.$inject = ['$scope'];</pre></td>
+</tr><tr>
+<td><pre lang="js">var x = $scope => {
+  "ngInject"
+};</pre></td>
+<td><pre lang="js">var x = $scope => {};
+x.$inject = ["$scope"];</pre></td>
+</tr></table>
+
+While `angularjs-annotate` supports many other annotation types, this syntax has proven to be the most reliable,
+particularly when used with other preprocessors.
+
+This method requires developers to remember to manually annotate their sources.  We highly recommend
+enabling Angular's [strict DI](https://docs.angularjs.org/guide/di#using-strict-dependency-injection)
+mode.
+
+### Comment-Based annotations
+
+In addition to prologue directives, `angularjs-annotate` will add DI annotations to functions and classes
+that have been annotated with a `/* @ngInject */` comment.
+
+Support for this annotation style is provided for backward-compatibility with `ng-annotate`.
+**We do not recommend annotating your sources with comments**, as other build tools have been known to
+mangle or remove these comments.  
+
+### Implicit / Automatic annotations
+
+Instead of explicitly annotating every function that requires DI annotations, in many cases, `angularjs-annotate`
+can automatically add Angular DI annotations to functions that require them.
+
+This feature is **opt-in**, and requires [`explicitOnly`](#explicitonly) to be set to `false`.  While we support
+automatically adding annotations to most idiomatic Angular code, it is impossible for us to anticipate and
+accommodate every possible use-case.  Worse still, these will be silent failures that will cause unexpected
+breakages in your code.
+
+#### Common Patterns
+
+<table><tr>
+<th>Raw Code</th>
+<th>Transformed</th>
+</tr><tr>
+<td><pre lang="js">angular.module("MyMod")
+   .controller("MyCtrl", function($scope) {});</pre></td>
+<td><pre lang="js">angular.module("MyMod")
+   .controller("MyCtrl", ["$scope", function ($scope) {}]);
+</pre></td>
+</tr><tr>
+<td><pre lang="js">myMod.controller("MyCtrl", function($scope) {});</pre></td>
+<td><pre lang="js">myMod.controller("MyCtrl", ["$scope", function ($scope) {}]);
+</pre></td>
+
+Many other common patterns can be detected.  See [IMPLICIT.md](IMPLICIT.md) and the [test sources](tests/) for details about the patterns that can be automatically detected by ng-annotate and this plugin, as well as information about how to explicitly mark functions and classes for annotation.
+
+#### Negation
+
+When using automatic/implicit matching, a function may be **excluded** from annotation by marking it with a `'ngNoInject'`
+prologue directive, or a `/* @ngNoInject */` comment.
+
+#### ES6 Annotations
 
 This plugin can annotate some ES6 classes and arrow functions that are not supported by ng-annotate:
 
-#### Implicit arrow function annotation
+##### Implicit arrow function annotation
 
-Arrow functions may be annotated anywhere that a "regular" function expression may be used. 
+Arrow functions may be annotated anywhere that a "regular" function expression may be used.
 
 **NOTE:** There are places where you _shouldn't_ use arrow functions in an Angular application.  Inside of an arrow function, the value of `this` is inherited from the lexical scope enclosing the function.  For this reason, arrow functions should not be used to declare Angular services or providers.  
 
@@ -72,7 +175,7 @@ Becomes:
 angular.module("MyMod").controller("MyCtrl", ["$scope", "$timeout", ($scope, $timeout) => {}]);
 ```
 
-#### Explicit arrow function annotation
+##### Explicit arrow function annotation
 
 Arrow functions may also be explicitly marked for annotation.
 
@@ -87,7 +190,7 @@ var x = /* @ngInject */ ($scope) => {};
 x.$inject = ["$scope"]
 ```
 
-#### Implicit Class Annotation
+##### Implicit Class Annotation
 
 If a class is declared as an Angular service or factory in the same file as it is declared, it will be annotated automatically:
 
@@ -112,7 +215,7 @@ svc.$inject = ['dep1'];
 angular.module('MyMod').service('MySvc', svc);
 ```
 
-#### Explicit Class Annotation
+##### Explicit Class Annotation
 
 If a class is exported and used in another file/module, it must be explicitly marked for injection:
 
@@ -136,7 +239,7 @@ class svc {
 }
 ```
 
-#### Exports
+##### Exports
 
 Exported functions and classes may be annotated.  Exported functions must have names:
 
@@ -147,16 +250,14 @@ export default function svc(dep1){}
 
 ## Notes & Philosophy
 
-This project/experiment does _not_ seek to replace ng-annotate.  However, it does seek to provide similar 
-functionality for Angular 1.x developers who are already using Babel and/or writing code in ES6.
+This project/experiment does _not_ seek to replicate the full feature set of ng-annotate.
+However, it does seek to provide similar functionality for Angular 1.x developers who are
+already using Babel and/or writing code in ES6.
 
-Because of some of the limitations presented by Babel's transformation process, this project does not aim to 
+Because of some of the limitations presented by Babel's transformation process, this project does not aim to
 achieve feature parity, or provide identical output to ng-annotate. Notably, Babel does not preserve formatting
 and indentations like ng-annotate does, and this project does not seek to replicate the features of ng-annotate that remove or transform existing annotations.
 
-Initially, I had hoped to make very few modifications to the upstream sources, in the hopes of eventually
-merging babel support directly into ng-annotate.  Unfortunately, Babylon appears to have diverged too 
-far from Acorn to make that goal realistic.  (I would love to be wrong here, and would welcome contributions that close the gap between the two projects!)
 
 ### To run tests:
 
