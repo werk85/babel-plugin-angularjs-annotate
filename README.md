@@ -4,9 +4,9 @@
 
 Babel plugin to add Angular 1.x annotations to your ES5/ES6 code.  Successor to [ng-annotate](https://github.com/olov/ng-annotate) for Babel/ES6 users.
 
-* Supports the full set of annotation styles supported by `ng-annotate`
+* Easy upgrade from `ng-annotate`.  
 * Fully compatible with ES5, transpiled ES6, and native ES6.
-* Offers improved control - Developers can explicitly mark functions and classes for annotation via a prologue directive (`'ngInject'`) or a comment, or allow `angularjs-annotate` to automatically determine which functions to annotate.  
+* Full control - Developers can directly specify which functions/classes require Angular DI annotations, or `angularjs-annotate` can figure it out for you!
 * Can annotate Angular 1.5 components
 * Can annotate ES6 Classes
 * Extensive test suite
@@ -30,7 +30,7 @@ and add the plugin to your `.babelrc` file:
 }
 ```
 
-## Upgrading
+## Upgrading to v1.0
 
 As of v1.0.0, `babel-plugin-angularjs-annotate` will only add annotations to functions that have been explicitly annotated
 with `'ngInject'` or `/* @ngInject */`.  To re-enable automatic/implicit matching of functions without explicit annotations,
@@ -256,10 +256,11 @@ already using Babel and/or writing code in ES6.
 
 Because of some of the limitations presented by Babel's transformation process, this project does not aim to
 achieve feature parity, or provide identical output to ng-annotate. Notably, Babel does not preserve formatting
-and indentations like ng-annotate does, and this project does not seek to replicate the features of ng-annotate that remove or transform existing annotations.
+and indentations like ng-annotate does, and this project does not seek to replicate the features of ng-annotate
+that remove or transform existing annotations.
 
 
-### To run tests:
+## To run tests:
 
 ```
 npm test
@@ -269,6 +270,5 @@ npm test
 ## License
 `MIT`, see [LICENSE](LICENSE) file.
 
-This project is a fork of [ng-annotate](https://github.com/olov/ng-annotate), which  was written by [Olov Lassus](https://github.com/olov) with the kind help by
+This project is a fork of [ng-annotate](https://github.com/olov/ng-annotate), which  was written by [Olov Lassus](https://github.com/olov) with the kind help of
 [contributors](https://github.com/olov/ng-annotate/graphs/contributors).
-[Follow @olov](https://twitter.com/olov) on Twitter for updates about ng-annotate.
