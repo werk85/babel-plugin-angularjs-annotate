@@ -37,7 +37,13 @@
 			margin-left: 1rem;
 		}
 
-		#errorMsg {
+		#warnings {
+			display: none;
+			background-color: #fcf8e3;
+			margin-left: 1rem;
+		}
+
+		#errorMsg, #warnMsg {
 			font-family: monospace;
 			white-space: pre;
 		}
@@ -73,11 +79,15 @@
 	<h3>Errors</h3>
 	<div id="errorMsg"></div>
 </div>
+<div id="warnings">
+	<h3>Warnings</h3>
+	<div id="warnMsg"></div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.17.0/codemirror.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.17.0/mode/javascript/javascript.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.10.3/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.10.3/babel.js"></script>
 <script src="repl-browser.js"></script>
 
 <script>
@@ -99,12 +109,27 @@
 	var input = CodeMirror(document.getElementById('input'), inputOpts);
 	var output = CodeMirror(document.getElementById('output'), outputOpts);
 
+	var warnings = '';
+	var oldWarn = console.warn;
+	console.warn = function(){
+		warnings += arguments[0] + '\n';
+		oldWarn.apply(window, arguments);
+	}
+
 	var change = function(cm){
+		warnings = '';
+
 		var es2015 = document.getElementById('es5').checked;
 		try {
 			document.getElementById('errors').style.display = 'none';
+			document.getElementById('warnings').style.display = 'none';
 			var result = window.transform(cm.getValue(), es2015);
 			output.setValue(result.code);
+
+			if(warnings.length){
+				document.getElementById('warnings').style.display = 'block';
+				document.getElementById('warnMsg').innerText = warnings;
+			}
 		} catch(e){
 			console.error(e);
 			document.getElementById('errors').style.display = 'block';

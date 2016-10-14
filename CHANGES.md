@@ -1,5 +1,8 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.6.0 2016-10-14
+ * New Feature: print a warning if we ask to re-annotate an DI injection array if the new parameters do not match, and throw an exception if the number of parameters is wrong.
+
 ## v0.5.3 2016-10-14
  * bugfix: fix error when re-annotating existing array
 
