@@ -187,6 +187,18 @@ module.exports = {
 
         myMod.service("a", MyCtrl);
       }
+    },
+    {
+      name: "existing array with annotation",
+      input: function(){
+        g(["a", "b", function(a, b) {
+          "ngInject"
+        }]);
+      }, expected: function(){
+        g(["a", "b", function(a, b) {
+          "ngInject"
+        }])
+      }
     }
   ]
 }

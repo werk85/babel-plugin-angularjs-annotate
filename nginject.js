@@ -372,7 +372,8 @@ function isAnnotatedArray(node) {
     const elements = node.elements;
 
     // last should be a function expression
-    if (elements.length === 0 || !isFunctionExpressionOrArrow(last(elements))) {
+    let fn = elements.slice(-1)[0];
+    if (elements.length === 0 || !isFunctionExpressionOrArrow(fn)) {
         return false;
     }
 
