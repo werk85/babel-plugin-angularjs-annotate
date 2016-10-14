@@ -6,6 +6,7 @@
 
 const is = require("simple-is");
 const t = require('babel-types');
+const codeFrame = require("babel-code-frame");
 
 module.exports = {
     inspectComment: inspectComment,
@@ -99,9 +100,9 @@ function inspectFunction(path, ctx) {
     // added/rebuilt/removed => g(["a", function(a) {
     //     "ngInject"
     // }]);
-    const maybeArrayExpression = path.parent;
+    const maybeArrayExpression = path.parentPath;
     if (isAnnotatedArray(maybeArrayExpression)) {
-        addSuspect(path.parentPath, ctx, !annotate);
+        addSuspect(maybeArrayExpression, ctx, !annotate);
     } else {
         addSuspect(path, ctx, !annotate);
     }
@@ -365,11 +366,11 @@ function nestedObjectValues(path, res) {
     return res;
 }
 
-function isAnnotatedArray(node) {
-    if (!t.isArrayExpression(node)) {
+function isAnnotatedArray(path) {
+    if (!t.isArrayExpression(path)) {
         return false;
     }
-    const elements = node.elements;
+    const elements = path.get('elements');
 
     // last should be a function expression
     let fn = elements.slice(-1)[0];
@@ -377,11 +378,23 @@ function isAnnotatedArray(node) {
         return false;
     }
 
+    var fnParams = fn.node.params.map(param => param.name);
+    if(fnParams.length > elements.length - 1){
+      throw path.buildCodeFrameError("[angularjs-annotate] ERROR: Function parameters do not match existing annotations.");
+    }
+
+    var warnedOnce = false;
     // all but last should be string literals
     for (let i = 0; i < elements.length - 1; i++) {
         const n = elements[i];
-        if (!t.isLiteral(n) || !is.string(n.value)) {
+        if (!t.isLiteral(n) || !is.string(n.node.value)) {
             return false;
+        }
+
+        if (!warnedOnce && fnParams[i] && n.node.value !== fnParams[i]) {
+          warnedOnce = true;
+          var frame = codeFrame(n.hub.file.code, n.node.loc.start.line, n.node.loc.start.column + 2);
+          console.warn("[angularjs-annotate] WARN: Function parameters do not match existing annotations.\n" + frame);
         }
     }
 
