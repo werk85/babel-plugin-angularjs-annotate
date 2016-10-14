@@ -1,5 +1,8 @@
 # babel-plugin-angularjs-annotate changelog
 
+## v0.5.3 2016-10-14
+ * bugfix: fix error when re-annotating existing array
+
 ## v0.5.2 2016-09-28
  * bugfix: fix crash on illegal component declaration (#11)
 
