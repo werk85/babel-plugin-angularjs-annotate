@@ -15,11 +15,14 @@
   "devDependencies": {
     "babel-core": "^6.10.4",
     "babel-preset-es2015": "^6.9.0",
+    "babelify": "^7.3.0",
+    "browserify": "^13.1.0",
     "chalk": "^1.1.1",
     "diff": "^2.2.3",
     "indent-string": "^2.1.0",
     "tap-xunit": "^1.4.0",
-    "tape": "^4.6.0"
+    "tape": "^4.6.0",
+    "watchify": "^3.7.0"
   },
   "keywords": [
     "angular",
@@ -34,7 +37,10 @@
     "babel-plugin"
   ],
   "scripts": {
-    "test": "node --harmony tests/tests.js | tap-xunit"
+    "lint": "eslint *.js",
+    "test": "node --harmony tests/tests.js | tap-xunit",
+    "watch": "watchify docs/repl.js -o docs/repl-browser.js -t babelify --presets es2015",
+    "build-site": "browserify docs/repl.js -o docs/repl-browser.js -t babelify --presets es2015"
   },
   "author": "Andrew Schmadel",
   "license": "MIT"
