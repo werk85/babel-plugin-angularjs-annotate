@@ -151,6 +151,90 @@ module.exports = {
       svc.$inject = ['dep1'];
       svc.foo = 'bar';
     }
+  },
+  {
+    name: "static class methods",
+    noES5: true,
+    explicit: true,
+    input: function(){
+      class svc {
+        /* @ngInject */
+        static config(dep1) {
+
+        }
+
+        static other(arg1) {
+
+        }
+
+        otherMethod(arg1) {
+          
+        }
+
+        noArgsMethod() {
+          
+        }
+      }
+    },
+    expected: function(){
+      class svc {
+        /* @ngInject */
+        static config(dep1) {
+
+        }
+
+        static other(arg1) {
+
+        }
+
+        otherMethod(arg1) {
+          
+        }
+
+        noArgsMethod() {
+
+        }
+      }
+      svc.config.$inject = ["dep1"];
+    }
+  },
+  {
+    name: "class methods",
+    noES5: true,
+    explicit: true,
+    input: function(){
+      class svc {
+        /* @ngInject */
+        $get(dep1) {
+
+        }
+
+        otherMethod(arg1) {
+
+        }
+
+        noArgsMethod() {
+          
+        }
+      }
+    },
+    expected: function(){
+      class svc {
+        /* @ngInject */
+        $get(dep1) {
+
+        }
+
+        otherMethod(arg1) {
+          
+        }
+
+        noArgsMethod() {
+          
+        }
+      }
+      svc.prototype.$get.$inject = ["dep1"];
+    }
   }
  ]
 };

@@ -730,7 +730,26 @@ function judgeInjectArraySuspect(path, ctx) {
 
     if (t.isClass(node)){
         declaratorName = node.id.name;
-        node = getConstructor(node);
+        getConstructorAndMethods(node).forEach(function (node) {
+            if (isFunctionExpressionWithArgs(node) || t.isClassMethod(node)) {
+                // var x = 1, y = function(a,b) {}, z;
+
+                if(node.id && node.id.name !== declaratorName){
+                    console.warn("Declarator name different", declaratorName);
+                }
+
+                assert(declaratorName);
+                if (node.kind === 'method') {
+                  if (node.static) {
+                    addInjectArrayAfterPath(node.params, opath, declaratorName + '.' + node.key.name);
+                  } else {
+                    addInjectArrayAfterPath(node.params, opath, declaratorName + '.prototype.' + node.key.name);
+                  }
+                } else {
+                  addInjectArrayAfterPath(node.params, opath, declaratorName);
+                }
+            }
+        });
     }
 
     if (isFunctionExpressionWithArgs(node) || t.isClassMethod(node)) {
@@ -742,7 +761,6 @@ function judgeInjectArraySuspect(path, ctx) {
 
         assert(declaratorName);
         addInjectArrayAfterPath(node.params, opath, declaratorName);
-
     } else if (isFunctionDeclarationWithArgs(node)) {
         // /*@ngInject*/ function foo($scope) {}
         addInjectArrayBeforePath(node.params,path,node.id.name);
@@ -841,14 +859,36 @@ function isGenericProviderName(node) {
     return t.isLiteral(node) && is.string(node.value);
 }
 
-function getConstructor(node){
-    var body = node.body.body;
-    for(var i=0; i< body.length; i++){
-        let node = body[i];
-        if(node.kind === 'constructor'){
-            return node;
-        }
+function getConstructorAndMethods(node){
+  var body = node.body.body;
+  var methods = [];
+  for(var i=0; i< body.length; i++){
+      let node = body[i];
+      if(node.kind === 'constructor'){
+          methods.push(node);
+      } else if (node.kind === 'method' && getAnnotation(node)) {
+          methods.push(node);
+      }
+  }
+  return methods;
+}
+
+function getAnnotation(node){
+  if(!node.leadingComments){
+    return null;
+  }
+
+  for(var i=0; i<node.leadingComments.length; i++){
+    let value = node.leadingComments[i].value.trim();
+
+    if(value === "@ngInject"){
+      return true;
+    } else if (value === "@ngNoInject") {
+      return false;
     }
+  }
+
+  return null;
 }
 
 module.exports.match = match;

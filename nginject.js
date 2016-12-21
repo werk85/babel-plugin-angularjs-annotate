@@ -250,10 +250,6 @@ function inspectClassDeclaration(path, ctx){
 function inspectClassMethod(path, ctx){
   const node = path.node;
 
-  if(node.kind !== 'constructor'){
-    return;
-  }
-
   let annotation = getAnnotation(path.node);
   if(annotation === null){
     annotation = matchPrologueDirectives(path);
